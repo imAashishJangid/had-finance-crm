@@ -8,30 +8,20 @@ import {
   Wallet,
   BarChart3,
   HelpCircle,
-  LogOut,
   Menu,
   X,
   Bell,
   Search,
-  ChevronDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
 }
 
 const navItems = [
-  { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
+  { icon: LayoutDashboard, label: "Dashboard", path: "/" },
   { icon: Users, label: "Customers", path: "/customers" },
   { icon: CreditCard, label: "Loans", path: "/loans" },
   { icon: Wallet, label: "Payments", path: "/payments" },
@@ -41,14 +31,15 @@ const navItems = [
 
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const location = useLocation();
 
   return (
-    <div className="min-h-screen bg-background flex">
+    <div className="min-h-screen bg-background flex flex-col lg:flex-row">
       {/* Mobile overlay */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 bg-foreground/50 z-40 lg:hidden"
+          className="fixed inset-0 bg-black/40 z-40 lg:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}
@@ -56,21 +47,20 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       {/* Sidebar */}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 w-72 bg-sidebar transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:z-auto",
+          "fixed inset-y-0 left-0 z-50 w-64 bg-sidebar transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:z-auto",
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
         <div className="flex flex-col h-full">
           {/* Logo */}
           <div className="h-20 flex items-center justify-between px-6 border-b border-sidebar-border">
-            <Link to="/dashboard" className="flex items-center gap-3">
+            <Link to="/" className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl gradient-accent flex items-center justify-center shadow-glow">
                 <CreditCard className="w-5 h-5 text-accent-foreground" />
               </div>
-              <div>
-                <span className="font-bold text-lg text-sidebar-foreground">Had Finance</span>
-                <span className="block text-xs text-sidebar-foreground/60">Loan CRM</span>
-              </div>
+              <span className="font-bold text-lg text-sidebar-foreground">
+                Had Finance
+              </span>
             </Link>
             <Button
               variant="ghost"
@@ -96,6 +86,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                       ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-md"
                       : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent"
                   )}
+                  onClick={() => setSidebarOpen(false)} // Close sidebar on mobile click
                 >
                   <item.icon className="w-5 h-5" />
                   {item.label}
@@ -103,29 +94,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               );
             })}
           </nav>
-
-          {/* User section */}
-          <div className="p-4 border-t border-sidebar-border">
-            <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-sidebar-accent/50">
-              <Avatar className="w-10 h-10">
-                <AvatarImage src="" />
-                <AvatarFallback className="bg-sidebar-primary text-sidebar-primary-foreground">
-                  JD
-                </AvatarFallback>
-              </Avatar>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-sidebar-foreground truncate">John Doe</p>
-                <p className="text-xs text-sidebar-foreground/60 truncate">Admin</p>
-              </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="text-sidebar-foreground/70 hover:text-sidebar-foreground"
-              >
-                <LogOut className="w-4 h-4" />
-              </Button>
-            </div>
-          </div>
         </div>
       </aside>
 
@@ -142,6 +110,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             >
               <Menu className="w-5 h-5" />
             </Button>
+
+            {/* Desktop Search */}
             <div className="hidden md:flex relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
@@ -149,43 +119,36 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 className="w-80 pl-10 bg-muted/50 border-0 focus-visible:ring-1"
               />
             </div>
+
+            {/* Mobile Search Toggle */}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="md:hidden"
+              onClick={() => setMobileSearchOpen(!mobileSearchOpen)}
+            >
+              <Search className="w-5 h-5" />
+            </Button>
           </div>
 
+          {/* Header Right Icons */}
           <div className="flex items-center gap-3">
             <Button variant="ghost" size="icon" className="relative">
               <Bell className="w-5 h-5" />
               <span className="absolute top-2 right-2 w-2 h-2 bg-destructive rounded-full" />
             </Button>
-
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="flex items-center gap-2">
-                  <Avatar className="w-8 h-8">
-                    <AvatarFallback className="bg-primary text-primary-foreground text-xs">
-                      JD
-                    </AvatarFallback>
-                  </Avatar>
-                  <span className="hidden md:inline font-medium">John Doe</span>
-                  <ChevronDown className="w-4 h-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
-                <DropdownMenuItem>Profile</DropdownMenuItem>
-                <DropdownMenuItem>Settings</DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem className="text-destructive">
-                  <LogOut className="w-4 h-4 mr-2" />
-                  Logout
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
           </div>
         </header>
 
+        {/* Mobile Search Input */}
+        {mobileSearchOpen && (
+          <div className="p-4 md:hidden bg-card border-b border-border">
+            <Input placeholder="Search customers, loans..." className="w-full" />
+          </div>
+        )}
+
         {/* Page content */}
-        <main className="flex-1 p-4 lg:p-8 overflow-auto">
-          {children}
-        </main>
+        <main className="flex-1 p-4 lg:p-8 overflow-auto">{children}</main>
       </div>
     </div>
   );

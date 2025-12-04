@@ -60,7 +60,7 @@ export default function RecentLoans() {
     <div className="bg-card rounded-2xl shadow-card border border-border/50 animate-slide-up" style={{ animationDelay: "200ms" }}>
       <div className="p-6 border-b border-border">
         <h3 className="text-lg font-semibold text-foreground">Recent Loan Applications</h3>
-        <p className="text-sm text-muted-foreground mt-1">Latest loan requests from customers</p>
+        <p className="text-sm text-muted-foreground mt-1">Latest loan customers</p>
       </div>
       <div className="divide-y divide-border">
         {recentLoans.map((loan) => (

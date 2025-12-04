@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,23 +14,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   Search,
-  Plus,
   Filter,
   Download,
   Eye,
@@ -37,6 +22,7 @@ import {
   MoreHorizontal,
   Phone,
   Mail,
+  CreditCard,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -79,28 +65,7 @@ const customers = [
     kycStatus: "pending",
     joinDate: "Mar 10, 2024",
   },
-  {
-    id: "C004",
-    name: "Sunita Reddy",
-    initials: "SR",
-    email: "sunita.reddy@email.com",
-    phone: "+91 65432 10987",
-    totalLoans: 1,
-    activeLoans: "₹0",
-    kycStatus: "verified",
-    joinDate: "Apr 5, 2024",
-  },
-  {
-    id: "C005",
-    name: "Vikram Singh",
-    initials: "VS",
-    email: "vikram.singh@email.com",
-    phone: "+91 54321 09876",
-    totalLoans: 4,
-    activeLoans: "₹12,00,000",
-    kycStatus: "rejected",
-    joinDate: "May 18, 2024",
-  },
+  // ... baki customers
 ];
 
 const kycStyles = {
@@ -111,7 +76,6 @@ const kycStyles = {
 
 export default function Customers() {
   const [searchQuery, setSearchQuery] = useState("");
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
 
   const filteredCustomers = customers.filter(
     (customer) =>
@@ -123,84 +87,28 @@ export default function Customers() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        {/* Page Header */}
+        {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 animate-fade-in">
           <div>
-            <h1 className="text-2xl font-bold text-foreground">Customer Management</h1>
+            <h1 className="text-2xl font-bold text-foreground">
+              Customer Management
+            </h1>
             <p className="text-muted-foreground mt-1">
               Manage your customers, KYC documents, and loan history.
             </p>
           </div>
-          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-            <DialogTrigger asChild>
-              <Button variant="hero">
-                <Plus className="w-4 h-4 mr-2" />
-                Add Customer
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-lg">
-              <DialogHeader>
-                <DialogTitle>Add New Customer</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4 mt-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>First Name</Label>
-                    <Input placeholder="Enter first name" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Last Name</Label>
-                    <Input placeholder="Enter last name" />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label>Email</Label>
-                  <Input type="email" placeholder="customer@email.com" />
-                </div>
-                <div className="space-y-2">
-                  <Label>Phone Number</Label>
-                  <Input placeholder="+91 XXXXX XXXXX" />
-                </div>
-                <div className="space-y-2">
-                  <Label>Address</Label>
-                  <Input placeholder="Enter full address" />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>ID Type</Label>
-                    <Select>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select ID type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="aadhaar">Aadhaar Card</SelectItem>
-                        <SelectItem value="pan">PAN Card</SelectItem>
-                        <SelectItem value="passport">Passport</SelectItem>
-                        <SelectItem value="voter">Voter ID</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>ID Number</Label>
-                    <Input placeholder="Enter ID number" />
-                  </div>
-                </div>
-                <div className="flex justify-end gap-3 pt-4">
-                  <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
-                    Cancel
-                  </Button>
-                  <Button variant="hero" onClick={() => setIsAddDialogOpen(false)}>
-                    Add Customer
-                  </Button>
-                </div>
-              </div>
-            </DialogContent>
-          </Dialog>
+
+          {/* Add Customer Link */}
+          <Link to="/customer-form">
+            <Button variant="hero">
+              <span className="mr-2">+</span> Add Customer
+            </Button>
+          </Link>
         </div>
 
         {/* Filters */}
-        <div className="flex flex-col sm:flex-row gap-4 animate-slide-up">
-          <div className="relative flex-1">
+        <div className="flex flex-col sm:flex-row gap-4 flex-wrap animate-slide-up">
+          <div className="relative flex-1 min-w-[200px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
               placeholder="Search customers by name, email, or ID..."
@@ -209,7 +117,7 @@ export default function Customers() {
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             <Button variant="outline">
               <Filter className="w-4 h-4 mr-2" />
               Filter
@@ -221,18 +129,33 @@ export default function Customers() {
           </div>
         </div>
 
-        {/* Customers Table */}
-        <div className="bg-card rounded-2xl shadow-card border border-border/50 overflow-hidden animate-slide-up" style={{ animationDelay: "100ms" }}>
-          <Table>
+        {/* Table */}
+        <div className="overflow-x-auto bg-card rounded-2xl shadow-card border border-border/50 animate-slide-up">
+          <Table className="min-w-[300px]">
             <TableHeader>
               <TableRow className="bg-muted/30 hover:bg-muted/30">
                 <TableHead className="font-semibold">Customer</TableHead>
                 <TableHead className="font-semibold">Contact</TableHead>
-                <TableHead className="font-semibold">Total Loans</TableHead>
-                <TableHead className="font-semibold">Active Amount</TableHead>
-                <TableHead className="font-semibold">KYC Status</TableHead>
-                <TableHead className="font-semibold">Join Date</TableHead>
-                <TableHead className="text-right font-semibold">Actions</TableHead>
+                {/* Mobile: show Active Amount, hide on sm */}
+                <TableHead className="font-semibold sm:hidden">
+                  Active Amount
+                </TableHead>
+                {/* Desktop: Total Loans */}
+                <TableHead className="font-semibold hidden sm:table-cell">
+                  Total Loans
+                </TableHead>
+                <TableHead className="font-semibold hidden sm:table-cell">
+                  Active Amount
+                </TableHead>
+                <TableHead className="font-semibold hidden sm:table-cell">
+                  KYC Status
+                </TableHead>
+                <TableHead className="font-semibold hidden sm:table-cell">
+                  Join Date
+                </TableHead>
+                <TableHead className="text-right font-semibold hidden sm:table-cell">
+                  Actions
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -240,20 +163,20 @@ export default function Customers() {
                 <TableRow key={customer.id} className="hover:bg-muted/20">
                   <TableCell>
                     <div className="flex items-center gap-3">
-                      <Avatar className="w-10 h-10">
-                        <AvatarFallback className="bg-primary/10 text-primary font-medium">
-                          {customer.initials}
-                        </AvatarFallback>
-                      </Avatar>
                       <div>
-                        <p className="font-medium text-foreground">{customer.name}</p>
-                        <p className="text-sm text-muted-foreground">{customer.id}</p>
+                        <p className="font-medium text-foreground">
+                          {customer.name}
+                        </p>
+                        <p className="text-sm text-muted-foreground hidden sm:block">
+                          {customer.id}
+                        </p>
                       </div>
                     </div>
                   </TableCell>
                   <TableCell>
                     <div className="space-y-1">
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      {/* Email hidden on small devices */}
+                      <div className="hidden sm:flex items-center gap-2 text-sm text-muted-foreground">
                         <Mail className="w-3.5 h-3.5" />
                         {customer.email}
                       </div>
@@ -263,17 +186,30 @@ export default function Customers() {
                       </div>
                     </div>
                   </TableCell>
-                  <TableCell className="font-medium">{customer.totalLoans}</TableCell>
-                  <TableCell className="font-semibold text-foreground">
+                  {/* Mobile: Active Amount */}
+                  <TableCell className="font-semibold text-foreground sm:hidden">
                     {customer.activeLoans}
                   </TableCell>
-                  <TableCell>
-                    <Badge className={kycStyles[customer.kycStatus as keyof typeof kycStyles]}>
+                  {/* Desktop */}
+                  <TableCell className="font-medium hidden sm:table-cell">
+                    {customer.totalLoans}
+                  </TableCell>
+                  <TableCell className="font-semibold text-foreground hidden sm:table-cell">
+                    {customer.activeLoans}
+                  </TableCell>
+                  <TableCell className="hidden sm:table-cell">
+                    <Badge
+                      className={
+                        kycStyles[customer.kycStatus as keyof typeof kycStyles]
+                      }
+                    >
                       {customer.kycStatus}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-muted-foreground">{customer.joinDate}</TableCell>
-                  <TableCell className="text-right">
+                  <TableCell className="text-muted-foreground hidden sm:table-cell">
+                    {customer.joinDate}
+                  </TableCell>
+                  <TableCell className="text-right hidden sm:table-cell">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="icon">
@@ -305,6 +241,3 @@ export default function Customers() {
     </DashboardLayout>
   );
 }
-
-// Need to import CreditCard
-import { CreditCard } from "lucide-react";

@@ -30,14 +30,21 @@ const overdueEMIs = [
 
 export default function OverdueAlerts() {
   return (
-    <div className="bg-card rounded-2xl shadow-card border border-border/50 animate-slide-up" style={{ animationDelay: "400ms" }}>
+    <div
+      className="bg-card rounded-2xl shadow-card border border-border/50 animate-slide-up"
+      style={{ animationDelay: "400ms" }}
+    >
       <div className="p-6 border-b border-border flex items-center gap-3">
         <div className="p-2 rounded-lg bg-destructive/10">
           <AlertTriangle className="w-5 h-5 text-destructive" />
         </div>
         <div>
-          <h3 className="text-lg font-semibold text-foreground">Overdue EMI Alerts</h3>
-          <p className="text-sm text-muted-foreground">{overdueEMIs.length} customers require attention</p>
+          <h3 className="text-lg font-semibold text-foreground">
+            Overdue EMI Alerts
+          </h3>
+          <p className="text-sm text-muted-foreground">
+            {overdueEMIs.length} customers require attention
+          </p>
         </div>
       </div>
       <div className="divide-y divide-border">
@@ -56,14 +63,21 @@ export default function OverdueAlerts() {
               </div>
             </div>
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" className="flex-1">
-                <Phone className="w-4 h-4 mr-1" />
-                Call
-              </Button>
-              <Button variant="outline" size="sm" className="flex-1">
-                <MessageSquare className="w-4 h-4 mr-1" />
-                Message
-              </Button>
+              {/* Call Button */}
+              <a href={`tel:${emi.phone}`} className="flex-1">
+                <Button variant="outline" size="sm" className="w-full">
+                  <Phone className="w-4 h-4 mr-1" />
+                  Call
+                </Button>
+              </a>
+
+              {/* Message Button */}
+              <a href={`sms:${emi.phone}`} className="flex-1">
+                <Button variant="outline" size="sm" className="w-full">
+                  <MessageSquare className="w-4 h-4 mr-1" />
+                  Message
+                </Button>
+              </a>
             </div>
           </div>
         ))}
