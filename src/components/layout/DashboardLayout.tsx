@@ -8,6 +8,7 @@ import {
   Wallet,
   BarChart3,
   HelpCircle,
+  Calculator,
   Menu,
   X,
   Bell,
@@ -27,6 +28,7 @@ const navItems = [
   { icon: Wallet, label: "Payments", path: "/payments" },
   { icon: BarChart3, label: "Analytics", path: "/analytics" },
   { icon: HelpCircle, label: "Support", path: "/support" },
+  { icon: Calculator , label: "Calculator", path: "/calculator" }, 
 ];
 
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
@@ -35,7 +37,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const location = useLocation();
 
   return (
-    <div className="min-h-screen bg-background flex flex-col lg:flex-row">
+    <div className="min-h-screen bg-background flex flex-col lg:flex-row ">
       {/* Mobile overlay */}
       {sidebarOpen && (
         <div
@@ -52,48 +54,62 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         )}
       >
         <div className="flex flex-col h-full">
-          {/* Logo */}
-          <div className="h-20 flex items-center justify-between px-6 border-b border-sidebar-border">
-            <Link to="/" className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl gradient-accent flex items-center justify-center shadow-glow">
-                <CreditCard className="w-5 h-5 text-accent-foreground" />
-              </div>
-              <span className="font-bold text-lg text-sidebar-foreground">
-                Had Finance
-              </span>
-            </Link>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="lg:hidden text-sidebar-foreground"
-              onClick={() => setSidebarOpen(false)}
-            >
-              <X className="w-5 h-5" />
-            </Button>
+          {/* Sticky Logo */}
+         <div
+  className="h-20 flex items-center justify-between px-6 border-b border-sidebar-border 
+  sticky top-0 bg-sidebar z-50"
+>
+  <Link to="/" className="flex items-center gap-3">
+
+    {/* Your Image Logo */}
+    <img
+      src="/logo.png"         // <-- yaha apni image ka naam lagao
+      alt="Had Finance Logo"
+      className="w-10 h-10 rounded-x2 object-cover"
+    />
+
+    <span className="font-bold text-lg text-sidebar-foreground">
+      Had Finance
+    </span>
+  </Link>
+
+  <Button
+    variant="ghost"
+    size="icon"
+    className="lg:hidden text-sidebar-foreground"
+    onClick={() => setSidebarOpen(false)}
+  >
+    <X className="w-5 h-5" />
+  </Button>
+</div>
+
+          {/* Sticky Nav Links */}
+          <div className="sticky top-20 bg-sidebar border-b border-sidebar-border z-40">
+            <nav className="px-4 py-4 space-y-1.5">
+              {navItems.map((item) => {
+                const isActive = location.pathname === item.path;
+                return (
+                  <Link
+                    key={item.path}
+                    to={item.path}
+                    className={cn(
+                      "flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200",
+                      isActive
+                        ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-md"
+                        : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent"
+                    )}
+                    onClick={() => setSidebarOpen(false)}
+                  >
+                    <item.icon className="w-5 h-5" />
+                    {item.label}
+                  </Link>
+                );
+              })}
+            </nav>
           </div>
 
-          {/* Navigation */}
-          <nav className="flex-1 px-4 py-6 space-y-1.5 overflow-y-auto">
-            {navItems.map((item) => {
-              const isActive = location.pathname === item.path;
-              return (
-                <Link
-                  key={item.path}
-                  to={item.path}
-                  className={cn(
-                    "flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200",
-                    isActive
-                      ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-md"
-                      : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent"
-                  )}
-                  onClick={() => setSidebarOpen(false)} // Close sidebar on mobile click
-                >
-                  <item.icon className="w-5 h-5" />
-                  {item.label}
-                </Link>
-              );
-            })}
-          </nav>
+          {/* Scrollable bottom part (future items) */}
+          <div className="flex-1 overflow-y-auto px-4 py-4"></div>
         </div>
       </aside>
 
@@ -143,7 +159,10 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         {/* Mobile Search Input */}
         {mobileSearchOpen && (
           <div className="p-4 md:hidden bg-card border-b border-border">
-            <Input placeholder="Search customers, loans..." className="w-full" />
+            <Input
+              placeholder="Search customers, loans..."
+              className="w-full"
+            />
           </div>
         )}
 

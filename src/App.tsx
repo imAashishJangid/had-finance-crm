@@ -12,7 +12,7 @@ import Analytics from "./pages/Analytics";
 import Support from "./pages/Support";
 import NotFound from "./pages/NotFound";
 import CustomerForm from "@/pages/CustomerForm";
-
+import  Calculator from  "./pages/Calculator"
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -31,6 +31,8 @@ const App = () => (
           <Route path="/support" element={<Support />} />          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
            <Route path="/customer-form" element={<CustomerForm />} />
+           <Route path="/calculator" element={<Calculator />} />
+        
         </Routes>
       </BrowserRouter>
     </TooltipProvider>
