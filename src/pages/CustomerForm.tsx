@@ -3,6 +3,9 @@ import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useNavigate } from "react-router-dom";
+import { API_URL } from "@/api/config";
+
 import {
   Select,
   SelectContent,
@@ -30,9 +33,36 @@ export default function CustomerForm() {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handleSubmit = () => {
-    console.log("Form Data:", formData);
-    // Backend call ya state update yaha
+  
+
+  const handleSubmit = async () => {
+  try {
+    const response = await fetch(`${API_URL}/customers`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(formData),
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to add customer");
+    }
+
+    const newCustomer = await response.json();
+    console.log("Customer added:", newCustomer);
+    navigate("/customers"); // Back to customer list after submit
+  } catch (error) {
+    console.error("Error adding customer:", error);
+    alert("Failed to add customer. Please try again.");
+  }
+};
+
+
+  const navigate = useNavigate();
+  const handleCancel = () => {
+    navigate(-1); // <-- Goes back to previous page
+    // ya specific page: navigate("/customers");
   };
 
   return (
@@ -148,15 +178,17 @@ export default function CustomerForm() {
               </Select>
             </div>{" "}
           </div>
-           <div className="space-y-2">
-                    <Label>Customer Photo</Label>
-                    <Input type="file" accept="image/*" />
-                  </div>
+          <div className="space-y-2">
+            <Label>Customer Photo</Label>
+            <Input type="file" accept="image/*" />
+          </div>
         </div>
 
         {/* Buttons */}
         <div className="flex justify-end gap-3 pt-4">
-          <Button variant="outline">Cancel</Button>
+          <Button variant="outline" onClick={handleCancel}>
+            Cancel
+          </Button>{" "}
           <Button variant="hero" onClick={handleSubmit}>
             Add Customer
           </Button>

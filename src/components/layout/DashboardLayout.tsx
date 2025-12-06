@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
+
 import {
   LayoutDashboard,
   Users,
@@ -9,6 +10,7 @@ import {
   BarChart3,
   HelpCircle,
   Calculator,
+  FileClock,
   Menu,
   X,
   Bell,
@@ -29,6 +31,7 @@ const navItems = [
   { icon: BarChart3, label: "Analytics", path: "/analytics" },
   { icon: HelpCircle, label: "Support", path: "/support" },
   { icon: Calculator , label: "Calculator", path: "/calculator" }, 
+  { icon: FileClock , label: "History", path: "/history" }, 
 ];
 
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
@@ -148,12 +151,14 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           </div>
 
           {/* Header Right Icons */}
+          <Link to="/notifications">
           <div className="flex items-center gap-3">
             <Button variant="ghost" size="icon" className="relative">
               <Bell className="w-5 h-5" />
               <span className="absolute top-2 right-2 w-2 h-2 bg-destructive rounded-full" />
             </Button>
           </div>
+          </Link>
         </header>
 
         {/* Mobile Search Input */}

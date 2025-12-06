@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { API_URL } from "@/api/config";
 import {
   Table,
   TableBody,
@@ -31,43 +31,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-const customers = [
-  {
-    id: "C001",
-    name: "Rajesh Kumar",
-    initials: "RK",
-    email: "rajesh.kumar@email.com",
-    phone: "+91 98765 43210",
-    totalLoans: 3,
-    activeLoans: "₹8,50,000",
-    kycStatus: "verified",
-    joinDate: "Jan 15, 2024",
-  },
-  {
-    id: "C002",
-    name: "Priya Sharma",
-    initials: "PS",
-    email: "priya.sharma@email.com",
-    phone: "+91 87654 32109",
-    totalLoans: 1,
-    activeLoans: "₹2,50,000",
-    kycStatus: "verified",
-    joinDate: "Feb 22, 2024",
-  },
-  {
-    id: "C003",
-    name: "Amit Patel",
-    initials: "AP",
-    email: "amit.patel@email.com",
-    phone: "+91 76543 21098",
-    totalLoans: 2,
-    activeLoans: "₹15,00,000",
-    kycStatus: "pending",
-    joinDate: "Mar 10, 2024",
-  },
-  // ... baki customers
-];
-
 const kycStyles = {
   verified: "bg-success/10 text-success border-success/20",
   pending: "bg-warning/10 text-warning border-warning/20",
@@ -75,7 +38,15 @@ const kycStyles = {
 };
 
 export default function Customers() {
+  const [customers, setCustomers] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+
+  useEffect(() => {
+    fetch(`${API_URL}/customers`)
+      .then((res) => res.json())
+      .then((data) => setCustomers(data))
+      .catch((err) => console.error("Error fetching customers:", err));
+  }, []);
 
   const filteredCustomers = customers.filter(
     (customer) =>
@@ -136,26 +107,12 @@ export default function Customers() {
               <TableRow className="bg-muted/30 hover:bg-muted/30">
                 <TableHead className="font-semibold">Customer</TableHead>
                 <TableHead className="font-semibold">Contact</TableHead>
-                {/* Mobile: show Active Amount, hide on sm */}
-                <TableHead className="font-semibold sm:hidden">
-                  Active Amount
-                </TableHead>
-                {/* Desktop: Total Loans */}
-                <TableHead className="font-semibold hidden sm:table-cell">
-                  Total Loans
-                </TableHead>
-                <TableHead className="font-semibold hidden sm:table-cell">
-                  Active Amount
-                </TableHead>
-                <TableHead className="font-semibold hidden sm:table-cell">
-                  KYC Status
-                </TableHead>
-                <TableHead className="font-semibold hidden sm:table-cell">
-                  Join Date
-                </TableHead>
-                <TableHead className="text-right font-semibold hidden sm:table-cell">
-                  Actions
-                </TableHead>
+                <TableHead className="font-semibold sm:hidden">Active Amount</TableHead>
+                <TableHead className="font-semibold hidden sm:table-cell">Total Loans</TableHead>
+                <TableHead className="font-semibold hidden sm:table-cell">Active Amount</TableHead>
+                <TableHead className="font-semibold hidden sm:table-cell">KYC Status</TableHead>
+                <TableHead className="font-semibold hidden sm:table-cell">Join Date</TableHead>
+                <TableHead className="text-right font-semibold hidden sm:table-cell">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -164,18 +121,13 @@ export default function Customers() {
                   <TableCell>
                     <div className="flex items-center gap-3">
                       <div>
-                        <p className="font-medium text-foreground">
-                          {customer.name}
-                        </p>
-                        <p className="text-sm text-muted-foreground hidden sm:block">
-                          {customer.id}
-                        </p>
+                        <p className="font-medium text-foreground">{customer.name}</p>
+                        <p className="text-sm text-muted-foreground hidden sm:block">{customer.id}</p>
                       </div>
                     </div>
                   </TableCell>
                   <TableCell>
                     <div className="space-y-1">
-                      {/* Email hidden on small devices */}
                       <div className="hidden sm:flex items-center gap-2 text-sm text-muted-foreground">
                         <Mail className="w-3.5 h-3.5" />
                         {customer.email}
@@ -186,29 +138,15 @@ export default function Customers() {
                       </div>
                     </div>
                   </TableCell>
-                  {/* Mobile: Active Amount */}
-                  <TableCell className="font-semibold text-foreground sm:hidden">
-                    {customer.activeLoans}
-                  </TableCell>
-                  {/* Desktop */}
-                  <TableCell className="font-medium hidden sm:table-cell">
-                    {customer.totalLoans}
-                  </TableCell>
-                  <TableCell className="font-semibold text-foreground hidden sm:table-cell">
-                    {customer.activeLoans}
-                  </TableCell>
+                  <TableCell className="font-semibold text-foreground sm:hidden">{customer.activeLoans}</TableCell>
+                  <TableCell className="font-medium hidden sm:table-cell">{customer.totalLoans}</TableCell>
+                  <TableCell className="font-semibold text-foreground hidden sm:table-cell">{customer.activeLoans}</TableCell>
                   <TableCell className="hidden sm:table-cell">
-                    <Badge
-                      className={
-                        kycStyles[customer.kycStatus as keyof typeof kycStyles]
-                      }
-                    >
+                    <Badge className={kycStyles[customer.kycStatus as keyof typeof kycStyles]}>
                       {customer.kycStatus}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-muted-foreground hidden sm:table-cell">
-                    {customer.joinDate}
-                  </TableCell>
+                  <TableCell className="text-muted-foreground hidden sm:table-cell">{customer.joinDate}</TableCell>
                   <TableCell className="text-right hidden sm:table-cell">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>

@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
+import DashboardLayout from "@/components/layout/DashboardLayout";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { motion } from "framer-motion";
@@ -42,6 +44,7 @@ export default function EMICalculator() {
 
 
   return (
+     <DashboardLayout>
     <div className="w-full flex justify-center p-6">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -150,5 +153,6 @@ export default function EMICalculator() {
         </Card>
       </motion.div>
     </div>
+    </DashboardLayout>
   );
 }
