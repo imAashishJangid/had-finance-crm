@@ -14,7 +14,7 @@ import CustomerForm from "@/pages/CustomerForm";
 import Calculator from "./pages/Calculator";
 import NotFound from "./pages/NotFound";
 import  History  from "./pages/History";
-import Noti from "./pages/noti"
+import Noti from "./pages/Noti"
 
 const queryClient = new QueryClient();
 
