@@ -42,10 +42,14 @@ export default function CustomerForm() {
  
 const handleSubmit = async () => {
   try {
+    // ✅ Ye line yahi hai:
     const response = await api.post("/api/customers", formData);
+
     console.log("Customer added:", response.data);
+    navigate("/customers"); // submit ke baad customer list page
   } catch (error) {
     console.error("Error adding customer:", error);
+    alert("Failed to add customer. Please try again.");
   }
 };
 
