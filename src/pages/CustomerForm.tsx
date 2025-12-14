@@ -1,10 +1,11 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useNavigate } from "react-router-dom";
-import { API_URL } from "@/api/config";
+import api from "@/config/api";
 
 import {
   Select,
@@ -15,6 +16,8 @@ import {
 } from "@/components/ui/select";
 
 export default function CustomerForm() {
+  const navigate = useNavigate();
+
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -30,45 +33,34 @@ export default function CustomerForm() {
   });
 
   const handleChange = (field: string, value: string) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
+    setFormData((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
   };
 
-  
-
   const handleSubmit = async () => {
-  try {
-    const response = await fetch(`${API_URL}/customers`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(formData),
-    });
+    try {
+      const response = await api.post("/api/customers", formData);
 
-    if (!response.ok) {
-      throw new Error("Failed to add customer");
+      console.log("Customer added:", response.data);
+      navigate("/customers");
+    } catch (error) {
+      console.error("Error adding customer:", error);
+      alert("Failed to add customer. Please try again.");
     }
+  };
 
-    const newCustomer = await response.json();
-    console.log("Customer added:", newCustomer);
-    navigate("/customers"); // Back to customer list after submit
-  } catch (error) {
-    console.error("Error adding customer:", error);
-    alert("Failed to add customer. Please try again.");
-  }
-};
-
-
-  const navigate = useNavigate();
   const handleCancel = () => {
-    navigate(-1); // <-- Goes back to previous page
-    // ya specific page: navigate("/customers");
+    navigate(-1);
   };
 
   return (
     <DashboardLayout>
       <div className="max-w-3xl mx-auto p-4 space-y-6">
-        <h1 className="text-2xl font-bold text-foreground">Add New Customer</h1>
+        <h1 className="text-2xl font-bold text-foreground">
+          Add New Customer
+        </h1>
 
         {/* Customer Info */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -76,49 +68,71 @@ export default function CustomerForm() {
             <Label>First Name</Label>
             <Input
               value={formData.firstName}
-              onChange={(e) => handleChange("firstName", e.target.value)}
+              onChange={(e) =>
+                handleChange("firstName", e.target.value)
+              }
             />
           </div>
+
           <div className="space-y-2">
             <Label>Last Name</Label>
             <Input
               value={formData.lastName}
-              onChange={(e) => handleChange("lastName", e.target.value)}
+              onChange={(e) =>
+                handleChange("lastName", e.target.value)
+              }
             />
           </div>
+
           <div className="space-y-2">
             <Label>Email</Label>
             <Input
               type="email"
               value={formData.email}
-              onChange={(e) => handleChange("email", e.target.value)}
+              onChange={(e) =>
+                handleChange("email", e.target.value)
+              }
             />
           </div>
+
           <div className="space-y-2">
             <Label>Phone</Label>
             <Input
               value={formData.phone}
-              onChange={(e) => handleChange("phone", e.target.value)}
+              onChange={(e) =>
+                handleChange("phone", e.target.value)
+              }
             />
           </div>
+
           <div className="space-y-2">
             <Label>Address</Label>
             <Input
               value={formData.address}
-              onChange={(e) => handleChange("address", e.target.value)}
+              onChange={(e) =>
+                handleChange("address", e.target.value)
+              }
             />
           </div>
+
           <div className="space-y-2">
             <Label>Join Date</Label>
             <Input
               type="date"
               value={formData.joinDate}
-              onChange={(e) => handleChange("joinDate", e.target.value)}
+              onChange={(e) =>
+                handleChange("joinDate", e.target.value)
+              }
             />
           </div>
+
           <div className="space-y-2">
             <Label>ID Type</Label>
-            <Select onValueChange={(val) => handleChange("idType", val)}>
+            <Select
+              onValueChange={(val) =>
+                handleChange("idType", val)
+              }
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Select ID type" />
               </SelectTrigger>
@@ -130,11 +144,14 @@ export default function CustomerForm() {
               </SelectContent>
             </Select>
           </div>
+
           <div className="space-y-2">
             <Label>ID Number</Label>
             <Input
               value={formData.idNumber}
-              onChange={(e) => handleChange("idNumber", e.target.value)}
+              onChange={(e) =>
+                handleChange("idNumber", e.target.value)
+              }
             />
           </div>
         </div>
@@ -145,42 +162,32 @@ export default function CustomerForm() {
             <Label>Loan Amount</Label>
             <Input
               value={formData.loanAmount}
-              onChange={(e) => handleChange("loanAmount", e.target.value)}
+              onChange={(e) =>
+                handleChange("loanAmount", e.target.value)
+              }
             />
           </div>
+
           <div className="space-y-2">
             <Label>Interest</Label>
-            <div className="flex gap-2">
-              <Input placeholder="%" />
-              <Select>
-                <SelectTrigger>
-                  <SelectValue placeholder="Per" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="month">Month</SelectItem>
-                  <SelectItem value="year">Year</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>{" "}
+            <Input
+              placeholder="%"
+              value={formData.interest}
+              onChange={(e) =>
+                handleChange("interest", e.target.value)
+              }
+            />
           </div>
+
           <div className="space-y-2">
             <Label>Term</Label>
-            <div className="flex gap-2">
-              <Input placeholder="%" />
-              <Select>
-                <SelectTrigger>
-                  <SelectValue placeholder="Per" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="month">Month</SelectItem>
-                  <SelectItem value="year">Year</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>{" "}
-          </div>
-          <div className="space-y-2">
-            <Label>Customer Photo</Label>
-            <Input type="file" accept="image/*" />
+            <Input
+              placeholder="Months / Years"
+              value={formData.term}
+              onChange={(e) =>
+                handleChange("term", e.target.value)
+              }
+            />
           </div>
         </div>
 
@@ -188,7 +195,7 @@ export default function CustomerForm() {
         <div className="flex justify-end gap-3 pt-4">
           <Button variant="outline" onClick={handleCancel}>
             Cancel
-          </Button>{" "}
+          </Button>
           <Button variant="hero" onClick={handleSubmit}>
             Add Customer
           </Button>
