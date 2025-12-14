@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-
+import api from "@/config/api";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import api from "@/config/api";
+ 
 
 import {
   Select,
@@ -39,17 +39,15 @@ export default function CustomerForm() {
     }));
   };
 
-  const handleSubmit = async () => {
-    try {
-      const response = await api.post("/api/customers", formData);
-
-      console.log("Customer added:", response.data);
-      navigate("/customers");
-    } catch (error) {
-      console.error("Error adding customer:", error);
-      alert("Failed to add customer. Please try again.");
-    }
-  };
+ 
+const handleSubmit = async () => {
+  try {
+    const response = await api.post("/api/customers", formData);
+    console.log("Customer added:", response.data);
+  } catch (error) {
+    console.error("Error adding customer:", error);
+  }
+};
 
   const handleCancel = () => {
     navigate(-1);
