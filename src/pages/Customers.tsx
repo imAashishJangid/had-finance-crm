@@ -41,19 +41,24 @@ export default function Customers() {
   const [customers, setCustomers] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
 
-  useEffect(() => {
-    fetch(`${API_URL}/customers`)
-      .then((res) => res.json())
-      .then((data) => setCustomers(data))
-      .catch((err) => console.error("Error fetching customers:", err));
-  }, []);
+ useEffect(() => {
+  fetch("https://had-loan-manage.onrender.com/api/customers")
+    .then(res => res.json())
+    .then(data => setCustomers(data))
+    .catch(err => console.error("Error fetching customers:", err));
+}, []);
 
-  const filteredCustomers = customers.filter(
-    (customer) =>
-      customer.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      customer.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      customer.id.toLowerCase().includes(searchQuery.toLowerCase())
+
+  const filteredCustomers = customers.filter((customer) => {
+  const query = searchQuery.toLowerCase();
+
+  return (
+    customer.name?.toLowerCase().includes(query) ||
+    customer.phone?.includes(query) ||
+    customer.idNumber?.toLowerCase().includes(query)
   );
+});
+
 
   return (
     <DashboardLayout>
@@ -117,7 +122,7 @@ export default function Customers() {
             </TableHeader>
             <TableBody>
               {filteredCustomers.map((customer) => (
-                <TableRow key={customer.id} className="hover:bg-muted/20">
+                <TableRow key={customer._id} className="hover:bg-muted/20">
                   <TableCell>
                     <div className="flex items-center gap-3">
                       <div>
@@ -129,8 +134,7 @@ export default function Customers() {
                   <TableCell>
                     <div className="space-y-1">
                       <div className="hidden sm:flex items-center gap-2 text-sm text-muted-foreground">
-                        <Mail className="w-3.5 h-3.5" />
-                        {customer.email}
+                        
                       </div>
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         <Phone className="w-3.5 h-3.5" />

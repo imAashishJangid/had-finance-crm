@@ -30,7 +30,7 @@ const App = () => (
           {/* WRAP ALL ROUTES IN LAYOUT */}
            
             <Route path="/" element={<Dashboard />} />
-            <Route path="/customers" element={<Customers />} />
+            <Route path="customers" element={<Customers />} />
             <Route path="/loans" element={<Loans />} />
             <Route path="/payments" element={<Payments />} />
             <Route path="/analytics" element={<Analytics />} />

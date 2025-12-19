@@ -1,34 +1,25 @@
+import { useState, useEffect } from "react";
 import { AlertTriangle, Phone, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
-
-const overdueEMIs = [
-  {
-    id: 1,
-    customer: "Mohan Verma",
-    loanId: "LN-2024-089",
-    amount: "₹25,000",
-    daysOverdue: 15,
-    phone: "+91 98765 43210",
-  },
-  {
-    id: 2,
-    customer: "Geeta Devi",
-    loanId: "LN-2024-102",
-    amount: "₹18,500",
-    daysOverdue: 8,
-    phone: "+91 87654 32109",
-  },
-  {
-    id: 3,
-    customer: "Ramesh Gupta",
-    loanId: "LN-2024-115",
-    amount: "₹32,000",
-    daysOverdue: 3,
-    phone: "+91 76543 21098",
-  },
-];
+import api from "@/config/api";
 
 export default function OverdueAlerts() {
+  const [overdueEMIs, setOverdueEMIs] = useState<
+    { id: string; customer: string; loanId: string; amount: string; daysOverdue: number; phone: string }[]
+  >([]);
+
+  useEffect(() => {
+    const fetchOverdue = async () => {
+      try {
+        const response = await api.get("/overdue-emis");
+        setOverdueEMIs(response.data);
+      } catch (err) {
+        console.error("Error fetching overdue EMIs:", err);
+      }
+    };
+    fetchOverdue();
+  }, []);
+
   return (
     <div
       className="bg-card rounded-2xl shadow-card border border-border/50 animate-slide-up"
@@ -39,12 +30,8 @@ export default function OverdueAlerts() {
           <AlertTriangle className="w-5 h-5 text-destructive" />
         </div>
         <div>
-          <h3 className="text-lg font-semibold text-foreground">
-            Overdue EMI Alerts
-          </h3>
-          <p className="text-sm text-muted-foreground">
-            {overdueEMIs.length} customers require attention
-          </p>
+          <h3 className="text-lg font-semibold text-foreground">Overdue EMI Alerts</h3>
+          <p className="text-sm text-muted-foreground">{overdueEMIs.length} customers require attention</p>
         </div>
       </div>
       <div className="divide-y divide-border">
@@ -57,25 +44,18 @@ export default function OverdueAlerts() {
               </div>
               <div className="text-right">
                 <p className="font-semibold text-foreground">{emi.amount}</p>
-                <p className="text-sm text-destructive font-medium">
-                  {emi.daysOverdue} days overdue
-                </p>
+                <p className="text-sm text-destructive font-medium">{emi.daysOverdue} days overdue</p>
               </div>
             </div>
             <div className="flex gap-2">
-              {/* Call Button */}
               <a href={`tel:${emi.phone}`} className="flex-1">
                 <Button variant="outline" size="sm" className="w-full">
-                  <Phone className="w-4 h-4 mr-1" />
-                  Call
+                  <Phone className="w-4 h-4 mr-1" /> Call
                 </Button>
               </a>
-
-              {/* Message Button */}
               <a href={`sms:${emi.phone}`} className="flex-1">
                 <Button variant="outline" size="sm" className="w-full">
-                  <MessageSquare className="w-4 h-4 mr-1" />
-                  Message
+                  <MessageSquare className="w-4 h-4 mr-1" /> Message
                 </Button>
               </a>
             </div>

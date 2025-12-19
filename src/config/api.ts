@@ -6,7 +6,7 @@ export const API_BASE_URL = import.meta.env.VITE_API_URL;
 // Axios instance
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL, // https://had-loan-manage.onrender.com
-  withCredentials: true,
+  
   headers: { "Content-Type": "application/json" },
 });
 

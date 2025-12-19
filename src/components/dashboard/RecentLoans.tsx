@@ -1,53 +1,7 @@
+import { useEffect, useState } from "react";
+import api from "@/config/api";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-
-const recentLoans = [
-  {
-    id: "LN001",
-    customer: "Rajesh Kumar",
-    initials: "RK",
-    amount: "₹5,00,000",
-    type: "Personal Loan",
-    status: "approved",
-    date: "2 hours ago",
-  },
-  {
-    id: "LN002",
-    customer: "Priya Sharma",
-    initials: "PS",
-    amount: "₹2,50,000",
-    type: "Business Loan",
-    status: "pending",
-    date: "5 hours ago",
-  },
-  {
-    id: "LN003",
-    customer: "Amit Patel",
-    initials: "AP",
-    amount: "₹10,00,000",
-    type: "Home Loan",
-    status: "approved",
-    date: "1 day ago",
-  },
-  {
-    id: "LN004",
-    customer: "Sunita Reddy",
-    initials: "SR",
-    amount: "₹1,50,000",
-    type: "Personal Loan",
-    status: "rejected",
-    date: "2 days ago",
-  },
-  {
-    id: "LN005",
-    customer: "Vikram Singh",
-    initials: "VS",
-    amount: "₹3,00,000",
-    type: "Vehicle Loan",
-    status: "pending",
-    date: "2 days ago",
-  },
-];
 
 const statusStyles = {
   approved: "bg-success/10 text-success border-success/20",
@@ -56,6 +10,20 @@ const statusStyles = {
 };
 
 export default function RecentLoans() {
+  const [recentLoans, setRecentLoans] = useState<any[]>([]);
+
+  useEffect(() => {
+    const fetchLoans = async () => {
+      try {
+        const res = await api.get("/loan/recent-loans");
+        setRecentLoans(res.data);
+      } catch (err) {
+        console.error("Error fetching recent loans:", err);
+      }
+    };
+    fetchLoans();
+  }, []);
+
   return (
     <div className="bg-card rounded-2xl shadow-card border border-border/50 animate-slide-up" style={{ animationDelay: "200ms" }}>
       <div className="p-6 border-b border-border">
@@ -64,10 +32,7 @@ export default function RecentLoans() {
       </div>
       <div className="divide-y divide-border">
         {recentLoans.map((loan) => (
-          <div
-            key={loan.id}
-            className="p-4 hover:bg-muted/30 transition-colors cursor-pointer"
-          >
+          <div key={loan.id} className="p-4 hover:bg-muted/30 transition-colors cursor-pointer">
             <div className="flex items-center gap-4">
               <Avatar className="w-10 h-10">
                 <AvatarFallback className="bg-primary/10 text-primary font-medium">

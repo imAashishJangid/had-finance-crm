@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import {
   AreaChart,
   Area,
@@ -7,24 +8,29 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-
-const data = [
-  { month: "Jan", disbursed: 4500000, collected: 3200000 },
-  { month: "Feb", disbursed: 5200000, collected: 3800000 },
-  { month: "Mar", disbursed: 4800000, collected: 4100000 },
-  { month: "Apr", disbursed: 6100000, collected: 4500000 },
-  { month: "May", disbursed: 5500000, collected: 4800000 },
-  { month: "Jun", disbursed: 7200000, collected: 5200000 },
-  { month: "Jul", disbursed: 6800000, collected: 5600000 },
-];
-
-const formatValue = (value: number) => {
-  if (value >= 10000000) return `₹${(value / 10000000).toFixed(1)}Cr`;
-  if (value >= 100000) return `₹${(value / 100000).toFixed(1)}L`;
-  return `₹${value}`;
-};
+import api from "@/config/api"; // axios instance
 
 export default function LoanChart() {
+  const [data, setData] = useState<{ month: string; disbursed: number; collected: number; }[]>([]);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const response = await api.get("/loan-stats");
+        setData(response.data);
+      } catch (err) {
+        console.error("Error fetching loan stats:", err);
+      }
+    };
+    fetchData();
+  }, []);
+
+  const formatValue = (value: number) => {
+    if (value >= 10000000) return `₹${(value / 10000000).toFixed(1)}Cr`;
+    if (value >= 100000) return `₹${(value / 100000).toFixed(1)}L`;
+    return `₹${value}`;
+  };
+
   return (
     <div className="bg-card rounded-2xl shadow-card border border-border/50 p-6 animate-slide-up" style={{ animationDelay: "300ms" }}>
       <div className="mb-6">
@@ -55,46 +61,11 @@ export default function LoanChart() {
               </linearGradient>
             </defs>
             <CartesianGrid strokeDasharray="3 3" stroke="hsl(220, 25%, 90%)" vertical={false} />
-            <XAxis
-              dataKey="month"
-              axisLine={false}
-              tickLine={false}
-              tick={{ fill: "hsl(220, 20%, 45%)", fontSize: 12 }}
-            />
-            <YAxis
-              axisLine={false}
-              tickLine={false}
-              tick={{ fill: "hsl(220, 20%, 45%)", fontSize: 12 }}
-              tickFormatter={formatValue}
-            />
-            <Tooltip
-              contentStyle={{
-                backgroundColor: "hsl(0, 0%, 100%)",
-                border: "1px solid hsl(220, 25%, 90%)",
-                borderRadius: "12px",
-                boxShadow: "0 4px 20px -4px hsl(220, 70%, 25%, 0.12)",
-              }}
-              formatter={(value: number) => [formatValue(value), ""]}
-              labelStyle={{ fontWeight: 600, color: "hsl(220, 50%, 15%)" }}
-            />
-            <Area
-              type="monotone"
-              dataKey="disbursed"
-              stroke="hsl(220, 85%, 55%)"
-              strokeWidth={2}
-              fillOpacity={1}
-              fill="url(#colorDisbursed)"
-              name="Disbursed"
-            />
-            <Area
-              type="monotone"
-              dataKey="collected"
-              stroke="hsl(145, 70%, 40%)"
-              strokeWidth={2}
-              fillOpacity={1}
-              fill="url(#colorCollected)"
-              name="Collected"
-            />
+            <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fill: "hsl(220, 20%, 45%)", fontSize: 12 }} />
+            <YAxis axisLine={false} tickLine={false} tick={{ fill: "hsl(220, 20%, 45%)", fontSize: 12 }} tickFormatter={formatValue} />
+            <Tooltip contentStyle={{ backgroundColor: "hsl(0, 0%, 100%)", border: "1px solid hsl(220, 25%, 90%)", borderRadius: "12px", boxShadow: "0 4px 20px -4px hsl(220, 70%, 25%, 0.12)" }} formatter={(value: number) => [formatValue(value), ""]} labelStyle={{ fontWeight: 600, color: "hsl(220, 50%, 15%)" }} />
+            <Area type="monotone" dataKey="disbursed" stroke="hsl(220, 85%, 55%)" strokeWidth={2} fillOpacity={1} fill="url(#colorDisbursed)" name="Disbursed" />
+            <Area type="monotone" dataKey="collected" stroke="hsl(145, 70%, 40%)" strokeWidth={2} fillOpacity={1} fill="url(#colorCollected)" name="Collected" />
           </AreaChart>
         </ResponsiveContainer>
       </div>
