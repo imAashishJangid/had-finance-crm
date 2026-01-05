@@ -15,6 +15,9 @@ import Calculator from "./pages/Calculator";
 import NotFound from "./pages/NotFound";
 import  History  from "./pages/History";
 import Noti from "./pages/Noti"
+import CustomerDetails from "./pages/CustomerDetails";
+
+
 
 const queryClient = new QueryClient();
 
@@ -22,10 +25,11 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />
-      <Sonner />
+<Sonner position="bottom-center" />
 
       <BrowserRouter>
         <Routes>
+
 
           {/* WRAP ALL ROUTES IN LAYOUT */}
            
@@ -39,6 +43,10 @@ const App = () => (
             <Route path="/calculator" element={<Calculator />} />
              <Route path="/history" element={<History />} />
              <Route path="/notifications" element={<Noti />} />
+             <Route path="/customer-form/:id" element={<CustomerForm />} />
+             <Route path="/customer-form" element={<CustomerForm />} />
+             <Route path="/customers/:id" element={<CustomerDetails />} />
+
 
            
            

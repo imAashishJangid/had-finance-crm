@@ -13,6 +13,7 @@ import { API_URL } from "@/api/config";
 import { Button } from "@/components/ui/button";
 import { Eye, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { toast } from "sonner";
 
 type LoanHistoryType = {
   _id: string;
@@ -27,38 +28,53 @@ export default function LoanHistory() {
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchHistory = async () => {
-      try {
-        const res = await fetch(`${API_URL}/history`);
+  // ✅ Fetch history from API
+  const fetchHistory = async () => {
+    try {
+      const res = await fetch(`${API_URL}/history`);
 
-        if (!res.ok) {
-          console.error("API Error:", res.status);
-          setHistory([]);
-          return;
-        }
-
-        const data = await res.json();
-        console.log("HISTORY API DATA 👉", data);
-
-        // ✅ SAFETY: always set array
-        setHistory(Array.isArray(data) ? data : []);
-      } catch (error) {
-        console.error("Error loading history:", error);
+      if (!res.ok) {
+        console.error("API Error:", res.status);
         setHistory([]);
-      } finally {
-        setLoading(false);
+        return;
       }
-    };
 
+      const data = await res.json();
+
+      // Sort by newest first (latest date on top)
+      const sorted = Array.isArray(data)
+        ? data.sort(
+            (a, b) =>
+              new Date(b.loanDate || "").getTime() -
+              new Date(a.loanDate || "").getTime()
+          )
+        : [];
+
+      setHistory(sorted);
+
+      // Optional: show toast if new entry added
+      if (history.length && sorted.length > history.length) {
+        toast.success("New loan activity added!");
+      }
+    } catch (error) {
+      console.error("Error loading history:", error);
+      setHistory([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchHistory();
+
+    // Polling: fetch every 5 sec
+    const interval = setInterval(fetchHistory, 5000);
+    return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ✅ SAFETY FILTER
   const filteredHistory = history.filter((item) =>
-    item.customerName
-      ?.toLowerCase()
-      .includes(searchQuery.toLowerCase())
+    item.customerName?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const statusStyle: Record<string, string> = {
@@ -123,9 +139,7 @@ export default function LoanHistory() {
                     <TableCell className="font-semibold">
                       ₹{loan.amount ?? 0}
                     </TableCell>
-                    <TableCell>
-                      {loan.loanDate || "-"}
-                    </TableCell>
+                    <TableCell>{loan.loanDate || "-"}</TableCell>
                     <TableCell>
                       <Badge
                         className={`capitalize border ${
