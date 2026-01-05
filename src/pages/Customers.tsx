@@ -25,6 +25,7 @@ import {
   Calendar,
   CreditCard,
   IndianRupee,
+  ChevronRight,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -32,6 +33,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 
 const statusStyles = {
   active: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
@@ -77,9 +85,17 @@ export default function Customers() {
   const [customers, setCustomers] = useState<Loan[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 
   useEffect(() => {
     fetchCustomers();
+    
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
   }, []);
 
   const fetchCustomers = async () => {
@@ -132,233 +148,323 @@ export default function Customers() {
     return 'N/A';
   };
 
+  // Mobile Card View
+  const MobileCustomerCard = ({ customer }: { customer: Loan }) => (
+    <Card className="mb-4">
+      <CardHeader className="pb-3">
+        <div className="flex justify-between items-start">
+          <div className="flex items-center gap-3">
+            {customer.customerImage?.url ? (
+              <img
+                src={customer.customerImage.url}
+                alt={customer.name}
+                className="h-12 w-12 rounded-full object-cover"
+              />
+            ) : (
+              <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
+                <User className="w-6 h-6 text-primary" />
+              </div>
+            )}
+            <div>
+              <CardTitle className="text-base">{customer.name}</CardTitle>
+              <CardDescription className="text-xs">
+                {customer.phone}
+              </CardDescription>
+            </div>
+          </div>
+          <Badge className={`capitalize ${statusStyles[customer.status] || ""}`}>
+            {customer.status}
+          </Badge>
+        </div>
+      </CardHeader>
+      <CardContent className="pb-3">
+        <div className="space-y-3">
+          <div className="flex justify-between items-center">
+            <div>
+              <p className="text-sm text-muted-foreground">Loan Amount</p>
+              <p className="font-medium">{formatCurrency(customer.loanAmount)}</p>
+            </div>
+            <div className="text-right">
+              <p className="text-sm text-muted-foreground">Interest</p>
+              <p className="font-medium">{customer.interestRate}%</p>
+            </div>
+          </div>
+          
+          <div className="flex justify-between items-center">
+            <div>
+              <p className="text-sm text-muted-foreground">Monthly Installment</p>
+              <p className="font-medium">{formatCurrency(customer.monthlyInstallment)}</p>
+            </div>
+            <div className="text-right">
+              <p className="text-sm text-muted-foreground">Duration</p>
+              <p className="font-medium">{getTermDuration(customer)}</p>
+            </div>
+          </div>
+          
+          <div className="pt-2 border-t">
+            <div className="flex justify-between items-center">
+              <div className="flex items-center gap-2">
+                <Badge 
+                  className={`text-xs ${idTypeStyles[customer.idType] || ""}`}
+                  variant="outline"
+                >
+                  {customer.idType}
+                </Badge>
+                <span className="text-xs text-muted-foreground">
+                  {customer.idNumber.slice(0, 10)}...
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Calendar className="w-3.5 h-3.5 text-muted-foreground" />
+                <span className="text-xs">{formatDate(customer.joinDate)}</span>
+              </div>
+            </div>
+          </div>
+          
+          <div className="pt-2 flex justify-between">
+            <Button variant="outline" size="sm" className="flex-1 mr-2">
+              <Eye className="w-3.5 h-3.5 mr-1" />
+              View
+            </Button>
+            <Button variant="outline" size="sm" className="flex-1 ml-2">
+              <Edit className="w-3.5 h-3.5 mr-1" />
+              Edit
+            </Button>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+
   return (
     <DashboardLayout>
-      <div className="space-y-6">
+      <div className="space-y-4 md:space-y-6 p-4 md:p-6">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 animate-fade-in">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 animate-fade-in">
           <div>
-            <h1 className="text-2xl font-bold text-foreground">
+            <h1 className="text-xl md:text-2xl font-bold text-foreground">
               Loan Management
             </h1>
-            <p className="text-muted-foreground mt-1">
+            <p className="text-sm md:text-base text-muted-foreground mt-1">
               Manage your customers and their loan details.
             </p>
           </div>
 
           {/* Add Customer Link */}
           <Link to="/customer-form">
-            <Button variant="hero">
+            <Button variant="hero" className="w-full md:w-auto">
               <span className="mr-2">+</span> Add Customer & Loan
             </Button>
           </Link>
         </div>
 
         {/* Filters */}
-        <div className="flex flex-col sm:flex-row gap-4 flex-wrap animate-slide-up">
-          <div className="relative flex-1 min-w-[200px]">
+        <div className="flex flex-col sm:flex-row gap-3 md:gap-4 flex-wrap animate-slide-up">
+          <div className="relative flex-1 min-w-0">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
-              placeholder="Search by name, phone, ID number..."
-              className="pl-10"
+              placeholder="Search by name, phone, ID..."
+              className="pl-10 text-sm md:text-base"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
           <div className="flex gap-2 flex-wrap">
-            <Button variant="outline" onClick={fetchCustomers}>
-              <Filter className="w-4 h-4 mr-2" />
-              Refresh
+            <Button variant="outline" onClick={fetchCustomers} size="sm" className="flex-1 sm:flex-none">
+              <Filter className="w-3.5 h-3.5 mr-2" />
+              <span className="hidden sm:inline">Refresh</span>
             </Button>
-            <Button variant="outline">
-              <Download className="w-4 h-4 mr-2" />
-              Export
+            <Button variant="outline" size="sm" className="flex-1 sm:flex-none">
+              <Download className="w-3.5 h-3.5 mr-2" />
+              <span className="hidden sm:inline">Export</span>
             </Button>
           </div>
         </div>
 
-        {/* Table */}
-        <div className="overflow-x-auto bg-card rounded-2xl shadow-card border border-border/50 animate-slide-up">
-          {loading ? (
-            <div className="flex justify-center items-center h-64">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-            </div>
-          ) : (
-            <Table className="min-w-[800px]">
-              <TableHeader>
-                <TableRow className="bg-muted/30 hover:bg-muted/30">
-                  <TableHead className="font-semibold">Customer</TableHead>
-                  <TableHead className="font-semibold">Contact & ID</TableHead>
-                  <TableHead className="font-semibold">Loan Details</TableHead>
-                  <TableHead className="font-semibold">Financials</TableHead>
-                  <TableHead className="font-semibold">Status</TableHead>
-                  <TableHead className="font-semibold">Date</TableHead>
-                  <TableHead className="text-right font-semibold">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredCustomers.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={7} className="text-center h-32">
-                      <div className="flex flex-col items-center justify-center text-muted-foreground">
-                        <User className="w-12 h-12 mb-2 opacity-50" />
-                        <p>No customers found</p>
-                        <Link to="/customer-form">
-                          <Button variant="link" className="mt-2">
-                            Add your first customer
-                          </Button>
-                        </Link>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  filteredCustomers.map((customer) => (
-                    <TableRow key={customer._id} className="hover:bg-muted/20">
-                      {/* Customer Info */}
-                      <TableCell>
-                        <div className="flex items-center gap-3">
-                          {customer.customerImage?.url ? (
-                            <img
-                              src={customer.customerImage.url}
-                              alt={customer.name}
-                              className="h-10 w-10 rounded-full object-cover"
-                            />
-                          ) : (
-                            <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                              <User className="w-5 h-5 text-primary" />
-                            </div>
-                          )}
-                          <div>
-                            <p className="font-medium text-foreground">{customer.name}</p>
-                            <p className="text-xs text-muted-foreground">
-                              ID: {customer._id.substring(-6)}
-                            </p>
-                          </div>
-                        </div>
-                      </TableCell>
-
-                      {/* Contact & ID */}
-                      <TableCell>
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2 text-sm">
-                            <Phone className="w-3.5 h-3.5 text-muted-foreground" />
-                            <span className="font-medium">{customer.phone}</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Badge 
-                              className={idTypeStyles[customer.idType] || ""}
-                              variant="outline"
-                            >
-                              {customer.idType}
-                            </Badge>
-                            <span className="text-xs text-muted-foreground truncate max-w-[100px]">
-                              {customer.idNumber}
-                            </span>
-                          </div>
-                        </div>
-                      </TableCell>
-
-                      {/* Loan Details */}
-                      <TableCell>
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2">
-                            <IndianRupee className="w-3.5 h-3.5" />
-                            <span className="font-medium">
-                              {formatCurrency(customer.loanAmount)}
-                            </span>
-                          </div>
-                          <div className="text-sm text-muted-foreground">
-                            {customer.interestRate}% × {getTermDuration(customer)}
-                          </div>
-                        </div>
-                      </TableCell>
-
-                      {/* Financials */}
-                      <TableCell>
-                        <div className="space-y-1">
-                          <div className="text-sm">
-                            <span className="text-muted-foreground">Total: </span>
-                            <span className="font-medium">
-                              {formatCurrency(customer.totalPayable)}
-                            </span>
-                          </div>
-                          <div className="text-sm">
-                            <span className="text-muted-foreground">Monthly: </span>
-                            <span className="font-medium">
-                              {formatCurrency(customer.monthlyInstallment)}
-                            </span>
-                          </div>
-                        </div>
-                      </TableCell>
-
-                      {/* Status */}
-                      <TableCell>
-                        <Badge 
-                          className={`capitalize ${statusStyles[customer.status] || ""}`}
-                        >
-                          {customer.status}
-                        </Badge>
-                      </TableCell>
-
-                      {/* Date */}
-                      <TableCell>
-                        <div className="flex items-center gap-2 text-sm">
-                          <Calendar className="w-3.5 h-3.5 text-muted-foreground" />
-                          {formatDate(customer.joinDate)}
-                        </div>
-                      </TableCell>
-
-                      {/* Actions */}
-                      <TableCell className="text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                              <MoreHorizontal className="w-4 h-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem>
-                              <Eye className="w-4 h-4 mr-2" />
-                              View Details
-                            </DropdownMenuItem>
-                            <DropdownMenuItem>
-                              <Edit className="w-4 h-4 mr-2" />
-                              Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuItem>
-                              <CreditCard className="w-4 h-4 mr-2" />
-                              Create Another Loan
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          )}
-        </div>
-
-        {/* Summary Stats */}
+        {/* Summary Stats - Always visible, responsive grid */}
         {customers.length > 0 && (
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 animate-slide-up">
-            <div className="bg-card rounded-xl p-4 border">
-              <p className="text-sm text-muted-foreground">Total Customers</p>
-              <p className="text-2xl font-bold">{customers.length}</p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-4 animate-slide-up">
+            <div className="bg-card rounded-xl p-3 md:p-4 border">
+              <p className="text-xs md:text-sm text-muted-foreground">Total Customers</p>
+              <p className="text-xl md:text-2xl font-bold">{customers.length}</p>
             </div>
-            <div className="bg-card rounded-xl p-4 border">
-              <p className="text-sm text-muted-foreground">Total Loan Amount</p>
-              <p className="text-2xl font-bold">
+            <div className="bg-card rounded-xl p-3 md:p-4 border">
+              <p className="text-xs md:text-sm text-muted-foreground">Total Loan Amount</p>
+              <p className="text-xl md:text-2xl font-bold">
                 {formatCurrency(customers.reduce((sum, c) => sum + c.loanAmount, 0))}
               </p>
             </div>
-            <div className="bg-card rounded-xl p-4 border">
-              <p className="text-sm text-muted-foreground">Active Loans</p>
-              <p className="text-2xl font-bold">
+            <div className="bg-card rounded-xl p-3 md:p-4 border">
+              <p className="text-xs md:text-sm text-muted-foreground">Active Loans</p>
+              <p className="text-xl md:text-2xl font-bold">
                 {customers.filter(c => c.status === 'active').length}
               </p>
             </div>
+          </div>
+        )}
+
+        {/* Content */}
+        {loading ? (
+          <div className="flex justify-center items-center h-64">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+          </div>
+        ) : filteredCustomers.length === 0 ? (
+          <div className="text-center h-32 flex flex-col items-center justify-center text-muted-foreground">
+            <User className="w-12 h-12 mb-2 opacity-50" />
+            <p className="mb-2">No customers found</p>
+            <Link to="/customer-form">
+              <Button variant="link" className="mt-2">
+                Add your first customer
+              </Button>
+            </Link>
+          </div>
+        ) : isMobile ? (
+          // Mobile Card View
+          <div className="animate-slide-up">
+            {filteredCustomers.map((customer) => (
+              <MobileCustomerCard key={customer._id} customer={customer} />
+            ))}
+          </div>
+        ) : (
+          // Desktop Table View
+          <div className="overflow-x-auto bg-card rounded-2xl shadow-card border border-border/50 animate-slide-up">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-muted/30 hover:bg-muted/30">
+                  <TableHead className="font-semibold text-sm md:text-base">Customer</TableHead>
+                  <TableHead className="font-semibold text-sm md:text-base">Contact & ID</TableHead>
+                  <TableHead className="font-semibold text-sm md:text-base">Loan Details</TableHead>
+                  <TableHead className="font-semibold text-sm md:text-base">Financials</TableHead>
+                  <TableHead className="font-semibold text-sm md:text-base">Status</TableHead>
+                  <TableHead className="font-semibold text-sm md:text-base">Date</TableHead>
+                  <TableHead className="text-right font-semibold text-sm md:text-base">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredCustomers.map((customer) => (
+                  <TableRow key={customer._id} className="hover:bg-muted/20">
+                    {/* Customer Info */}
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                        {customer.customerImage?.url ? (
+                          <img
+                            src={customer.customerImage.url}
+                            alt={customer.name}
+                            className="h-10 w-10 rounded-full object-cover"
+                          />
+                        ) : (
+                          <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                            <User className="w-5 h-5 text-primary" />
+                          </div>
+                        )}
+                        <div className="min-w-0">
+                          <p className="font-medium text-foreground truncate">{customer.name}</p>
+                          <p className="text-xs text-muted-foreground truncate">
+                            ID: {customer._id.substring(-6)}
+                          </p>
+                        </div>
+                      </div>
+                    </TableCell>
+
+                    {/* Contact & ID */}
+                    <TableCell>
+                      <div className="space-y-1 min-w-0">
+                        <div className="flex items-center gap-2 text-sm">
+                          <Phone className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+                          <span className="font-medium truncate">{customer.phone}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Badge 
+                            className={`text-xs ${idTypeStyles[customer.idType] || ""}`}
+                            variant="outline"
+                          >
+                            {customer.idType}
+                          </Badge>
+                          <span className="text-xs text-muted-foreground truncate">
+                            {customer.idNumber}
+                          </span>
+                        </div>
+                      </div>
+                    </TableCell>
+
+                    {/* Loan Details */}
+                    <TableCell>
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <IndianRupee className="w-3.5 h-3.5" />
+                          <span className="font-medium">
+                            {formatCurrency(customer.loanAmount)}
+                          </span>
+                        </div>
+                        <div className="text-sm text-muted-foreground">
+                          {customer.interestRate}% × {getTermDuration(customer)}
+                        </div>
+                      </div>
+                    </TableCell>
+
+                    {/* Financials */}
+                    <TableCell>
+                      <div className="space-y-1">
+                        <div className="text-sm">
+                          <span className="text-muted-foreground">Total: </span>
+                          <span className="font-medium">
+                            {formatCurrency(customer.totalPayable)}
+                          </span>
+                        </div>
+                        <div className="text-sm">
+                          <span className="text-muted-foreground">Monthly: </span>
+                          <span className="font-medium">
+                            {formatCurrency(customer.monthlyInstallment)}
+                          </span>
+                        </div>
+                      </div>
+                    </TableCell>
+
+                    {/* Status */}
+                    <TableCell>
+                      <Badge 
+                        className={`capitalize text-xs md:text-sm ${statusStyles[customer.status] || ""}`}
+                      >
+                        {customer.status}
+                      </Badge>
+                    </TableCell>
+
+                    {/* Date */}
+                    <TableCell>
+                      <div className="flex items-center gap-2 text-sm">
+                        <Calendar className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+                        {formatDate(customer.joinDate)}
+                      </div>
+                    </TableCell>
+
+                    {/* Actions */}
+                    <TableCell className="text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <MoreHorizontal className="w-4 h-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem>
+                            <Eye className="w-4 h-4 mr-2" />
+                            View Details
+                          </DropdownMenuItem>
+                          <DropdownMenuItem>
+                            <Edit className="w-4 h-4 mr-2" />
+                            Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuItem>
+                            <CreditCard className="w-4 h-4 mr-2" />
+                            Create Another Loan
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           </div>
         )}
       </div>
