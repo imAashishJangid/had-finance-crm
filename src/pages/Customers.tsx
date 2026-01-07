@@ -138,17 +138,20 @@ export default function Customers() {
   doc.setFontSize(18);
   doc.text("Customer & Loan Report", 14, 20);
 
-  // Summary
-  const totalCustomers = customers.length;
-  const totalLoanAmount = customers.reduce((sum, c) => sum + c.loanAmount, 0);
-  const activeLoans = customers.filter((c) => c.status === "active").length;
-  const closedLoans = customers.filter((c) => c.status === "closed").length;
+ // ===== SUMMARY CALCULATIONS =====
+const activeCustomers = customers.filter(c => c.status === "active");
+const closedCustomers = customers.filter(c => c.status === "closed");
+const pendingCustomers = customers.filter(c => c.status === "pending");
+const defaultedCustomers = customers.filter(c => c.status === "defaulted");
 
-  doc.setFontSize(12);
-  doc.text(`Total Customers: ${totalCustomers}`, 14, 30);
-  doc.text(`Total Loan Amount: ₹${totalLoanAmount}`, 14, 36);
-  doc.text(`Active Loans: ${activeLoans}`, 14, 42);
-  doc.text(`Closed Loans: ${closedLoans}`, 14, 48);
+const totalCustomers = customers.length;
+
+const activeAmount = activeCustomers.reduce((sum, c) => sum + c.loanAmount, 0);
+const closedAmount = closedCustomers.reduce((sum, c) => sum + c.loanAmount, 0);
+const pendingAmount = pendingCustomers.reduce((sum, c) => sum + c.loanAmount, 0);
+const defaultedAmount = defaultedCustomers.reduce((sum, c) => sum + c.loanAmount, 0);
+
+const totalAmount = customers.reduce((sum, c) => sum + c.loanAmount, 0);
 
   // Table
   const tableColumn = [
@@ -226,6 +229,53 @@ export default function Customers() {
       maximumFractionDigits: 0,
     }).format(amount);
   };
+
+  // ===== SUMMARY CALCULATIONS =====
+// ===== SUMMARY CALCULATIONS (ADDED ONLY) =====
+const activeCustomers = customers.filter(
+  (c) => c.status === "active"
+);
+
+const closedCustomers = customers.filter(
+  (c) => c.status === "closed"
+);
+
+const pendingCustomers = customers.filter(
+  (c) => c.status === "pending"
+);
+
+const defaultedCustomers = customers.filter(
+  (c) => c.status === "defaulted"
+);
+
+const totalCustomers = customers.length;
+
+const activeAmount = activeCustomers.reduce(
+  (sum, c) => sum + c.loanAmount,
+  0
+);
+
+const closedAmount = closedCustomers.reduce(
+  (sum, c) => sum + c.loanAmount,
+  0
+);
+
+const pendingAmount = pendingCustomers.reduce(
+  (sum, c) => sum + c.loanAmount,
+  0
+);
+
+const defaultedAmount = defaultedCustomers.reduce(
+  (sum, c) => sum + c.loanAmount,
+  0
+);
+
+const totalAmount = customers.reduce(
+  (sum, c) => sum + c.loanAmount,
+  0
+);
+
+
 
   const getTermDuration = (customer: Loan) => {
     if (customer.term === "months" && customer.months) {
@@ -361,37 +411,89 @@ export default function Customers() {
           </div>
         </div>
 
-        {/* Summary Stats - Always visible, responsive grid */}
-        {customers.length > 0 && (
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-4 animate-slide-up">
-            <div className="bg-card rounded-xl p-3 md:p-4 border">
-              <p className="text-xs md:text-sm text-muted-foreground">
-                Total Customers
-              </p>
-              <p className="text-xl md:text-2xl font-bold">
-                {customers.length}
-              </p>
-            </div>
-            <div className="bg-card rounded-xl p-3 md:p-4 border">
-              <p className="text-xs md:text-sm text-muted-foreground">
-                Total Loan Amount
-              </p>
-              <p className="text-xl md:text-2xl font-bold">
-                {formatCurrency(
-                  customers.reduce((sum, c) => sum + c.loanAmount, 0)
-                )}
-              </p>
-            </div>
-            <div className="bg-card rounded-xl p-3 md:p-4 border">
-              <p className="text-xs md:text-sm text-muted-foreground">
-                Active Loans
-              </p>
-              <p className="text-xl md:text-2xl font-bold">
-                {customers.filter((c) => c.status === "active").length}
-              </p>
-            </div>
-          </div>
-        )}
+  {customers.length > 0 && (
+  <div className="space-y-4 animate-slide-up">
+
+    {/* ===== CUSTOMER COUNTS ===== */}
+    <div className="grid grid-cols-1 sm:grid-cols-5 gap-4">
+      <div className="bg-card rounded-xl p-4 border">
+        <p className="text-sm text-muted-foreground">Active Customers</p>
+        <p className="text-2xl font-bold text-green-600">
+          {activeCustomers.length}
+        </p>
+      </div>
+
+      <div className="bg-card rounded-xl p-4 border">
+        <p className="text-sm text-muted-foreground">Closed Customers</p>
+        <p className="text-2xl font-bold text-blue-600">
+          {closedCustomers.length}
+        </p>
+      </div>
+
+      <div className="bg-card rounded-xl p-4 border">
+        <p className="text-sm text-muted-foreground">Pending Customers</p>
+        <p className="text-2xl font-bold text-yellow-600">
+          {pendingCustomers.length}
+        </p>
+      </div>
+
+      <div className="bg-card rounded-xl p-4 border">
+        <p className="text-sm text-muted-foreground">Defaulted Customers</p>
+        <p className="text-2xl font-bold text-red-600">
+          {defaultedCustomers.length}
+        </p>
+      </div>
+
+      <div className="bg-card rounded-xl p-4 border">
+        <p className="text-sm text-muted-foreground">Total Customers</p>
+        <p className="text-2xl font-bold">
+          {totalCustomers}
+        </p>
+      </div>
+    </div>
+
+    {/* ===== AMOUNTS ===== */}
+    <div className="grid grid-cols-1 sm:grid-cols-5 gap-4">
+      <div className="bg-card rounded-xl p-4 border">
+        <p className="text-sm text-muted-foreground">Active Amount</p>
+        <p className="text-2xl font-bold text-green-600">
+          {formatCurrency(activeAmount)}
+        </p>
+      </div>
+
+      <div className="bg-card rounded-xl p-4 border">
+        <p className="text-sm text-muted-foreground">Closed Amount</p>
+        <p className="text-2xl font-bold text-blue-600">
+          {formatCurrency(closedAmount)}
+        </p>
+      </div>
+
+      <div className="bg-card rounded-xl p-4 border">
+        <p className="text-sm text-muted-foreground">Pending Amount</p>
+        <p className="text-2xl font-bold text-yellow-600">
+          {formatCurrency(pendingAmount)}
+        </p>
+      </div>
+
+      <div className="bg-card rounded-xl p-4 border">
+        <p className="text-sm text-muted-foreground">Defaulted Amount</p>
+        <p className="text-2xl font-bold text-red-600">
+          {formatCurrency(defaultedAmount)}
+        </p>
+      </div>
+
+      <div className="bg-card rounded-xl p-4 border">
+        <p className="text-sm text-muted-foreground">Total Amount</p>
+        <p className="text-2xl font-bold">
+          {formatCurrency(totalAmount)}
+        </p>
+      </div>
+    </div>
+
+  </div>
+)}
+
+
 
         {/* Content */}
         {loading ? (

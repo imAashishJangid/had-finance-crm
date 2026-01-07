@@ -21,6 +21,22 @@ export default function CustomerDetails() {
       .finally(() => setLoading(false));
   }, [id]);
 
+
+  const handleStatusChange = async (newStatus: string) => {
+  try {
+    const res = await api.put(`/api/loans/${id}`, {
+      status: newStatus,
+    });
+
+    setCustomer(res.data.data); // UI instantly update
+    toast.success("Status updated successfully!");
+  } catch (error) {
+    console.error(error);
+    toast.error("Failed to update status");
+  }
+};
+
+
   const handleDelete = async () => {
     setShowConfirm(false);
     try {
@@ -64,9 +80,17 @@ export default function CustomerDetails() {
             <div className="text-center md:text-left">
               <h2 className="text-xl font-bold">{customer.name}</h2>
               <p className="text-sm text-muted-foreground">{customer.phone}</p>
-              <span className="inline-block mt-2 px-3 py-1 text-xs rounded-full bg-green-100 text-green-700">
-                {customer.status}
-              </span>
+             <select
+  value={customer.status}
+  onChange={(e) => handleStatusChange(e.target.value)}
+  className="mt-2 border rounded px-3 py-1 text-sm"
+>
+  <option value="active">Active</option>
+  <option value="closed">Closed</option>
+  <option value="pending">Pending</option>
+  <option value="defaulted">Defaulted</option>
+</select>
+
             </div>
           </div>
         </Card>
@@ -89,7 +113,15 @@ export default function CustomerDetails() {
             <p>
               <b>ID Number:</b> {customer.idNumber}
             </p>
+            <p>
+  <b>Join Date:</b>{" "}
+  {customer.joinDate
+    ? new Date(customer.joinDate).toLocaleDateString("en-IN")
+    : "-"}
+</p>
+
           </CardContent>
+          
         </Card>
 
         {/* 💰 Loan Details */}
