@@ -79,7 +79,17 @@ export default function CustomerDetails() {
             {/* Basic Info */}
             <div className="text-center md:text-left">
               <h2 className="text-xl font-bold">{customer.name}</h2>
-              <p className="text-sm text-muted-foreground">{customer.phone}</p>
+<div className="flex items-center justify-center md:justify-start gap-3 mt-1">
+  <p className="text-sm text-muted-foreground">{customer.phone}</p>
+
+  {customer.phone && (
+    <a href={`tel:${customer.phone}`}>
+      <Button size="sm" variant="outline">
+        📞 Call
+      </Button>
+    </a>
+  )}
+</div>
              <select
   value={customer.status}
   onChange={(e) => handleStatusChange(e.target.value)}

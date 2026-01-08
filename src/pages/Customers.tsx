@@ -9,7 +9,6 @@ import { useNavigate } from "react-router-dom";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable"; // default import
 
-
 import {
   Table,
   TableBody,
@@ -45,8 +44,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-
-
 
 const statusStyles = {
   active:
@@ -131,86 +128,110 @@ export default function Customers() {
     }
   };
 
+  const [statusFilter, setStatusFilter] = useState("all");
+
   const exportPDF = () => {
-  const doc = new jsPDF();
+    const doc = new jsPDF();
 
-  // Title
-  doc.setFontSize(18);
-  doc.text("Customer & Loan Report", 14, 20);
+    // Title
+    doc.setFontSize(18);
+    doc.text("Customer & Loan Report", 14, 20);
 
- // ===== SUMMARY CALCULATIONS =====
-const activeCustomers = customers.filter(c => c.status === "active");
-const closedCustomers = customers.filter(c => c.status === "closed");
-const pendingCustomers = customers.filter(c => c.status === "pending");
-const defaultedCustomers = customers.filter(c => c.status === "defaulted");
+    // ===== SUMMARY CALCULATIONS =====
+    const activeCustomers = customers.filter((c) => c.status === "active");
+    const closedCustomers = customers.filter((c) => c.status === "closed");
+    const pendingCustomers = customers.filter((c) => c.status === "pending");
+    const defaultedCustomers = customers.filter(
+      (c) => c.status === "defaulted"
+    );
 
-const totalCustomers = customers.length;
+    const totalCustomers = customers.length;
 
-const activeAmount = activeCustomers.reduce((sum, c) => sum + c.loanAmount, 0);
-const closedAmount = closedCustomers.reduce((sum, c) => sum + c.loanAmount, 0);
-const pendingAmount = pendingCustomers.reduce((sum, c) => sum + c.loanAmount, 0);
-const defaultedAmount = defaultedCustomers.reduce((sum, c) => sum + c.loanAmount, 0);
+    const activeAmount = activeCustomers.reduce(
+      (sum, c) => sum + c.loanAmount,
+      0
+    );
+    const closedAmount = closedCustomers.reduce(
+      (sum, c) => sum + c.loanAmount,
+      0
+    );
+    const pendingAmount = pendingCustomers.reduce(
+      (sum, c) => sum + c.loanAmount,
+      0
+    );
+    const defaultedAmount = defaultedCustomers.reduce(
+      (sum, c) => sum + c.loanAmount,
+      0
+    );
 
-const totalAmount = customers.reduce((sum, c) => sum + c.loanAmount, 0);
+    const totalAmount = customers.reduce((sum, c) => sum + c.loanAmount, 0);
 
-  // Table
-  const tableColumn = [
-    "Name",
-    "Phone",
-    "ID Type",
-    "ID Number",
-    "Loan Amount",
-    "Interest Rate",
-    "Term",
-    "Duration",
-    "Status",
-    "Monthly EMI",
-  ];
-
-  const tableRows: any[] = [];
-
-  customers.forEach((c) => {
-    const duration =
-      c.term === "months"
-        ? `${c.months} months`
-        : c.years
-        ? `${c.years} years`
-        : "-";
-
-    const row = [
-      c.name,
-      c.phone,
-      c.idType,
-      c.idNumber,
-      c.loanAmount,
-      c.interestRate + "%",
-      c.term,
-      duration,
-      c.status,
-      c.monthlyInstallment,
+    // Table
+    const tableColumn = [
+      "Name",
+      "Phone",
+      "ID Type",
+      "ID Number",
+      "Loan Amount",
+      "Interest Rate",
+      "Term",
+      "Duration",
+      "Status",
+      "Monthly EMI",
     ];
-    tableRows.push(row);
-  });
 
-   autoTable(doc,{
-    head: [tableColumn],
-    body: tableRows,
-    startY: 55,
-    styles: { fontSize: 8 },
-    headStyles: { fillColor: [22, 160, 133] },
-  });
+    const tableRows: any[] = [];
 
-  doc.save("Customer_Loan_Report.pdf");
-};
+    customers.forEach((c) => {
+      const duration =
+        c.term === "months"
+          ? `${c.months} months`
+          : c.years
+          ? `${c.years} years`
+          : "-";
+
+      const row = [
+        c.name,
+        c.phone,
+        c.idType,
+        c.idNumber,
+        c.loanAmount,
+        c.interestRate + "%",
+        c.term,
+        duration,
+        c.status,
+        c.monthlyInstallment,
+      ];
+      tableRows.push(row);
+    });
+
+    autoTable(doc, {
+      head: [tableColumn],
+      body: tableRows,
+      startY: 55,
+      styles: { fontSize: 8 },
+      headStyles: { fillColor: [22, 160, 133] },
+    });
+
+    doc.save("Customer_Loan_Report.pdf");
+  };
 
   const filteredCustomers = customers.filter((customer) => {
     const query = searchQuery.toLowerCase();
-    return (
+
+    // 🔍 Search match
+    const matchesSearch =
       customer.name?.toLowerCase().includes(query) ||
       customer.phone?.includes(query) ||
       customer.idNumber?.toLowerCase().includes(query) ||
-      customer._id?.toLowerCase().includes(query)
-    );
+      customer._id?.toLowerCase().includes(query);
+
+    // 🎯 Status match
+    const matchesStatus =
+      statusFilter === "all" || customer.status === statusFilter;
+
+    // ✅ dono true hone chahiye
+    return matchesSearch && matchesStatus;
   });
 
   const formatDate = (dateString: string) => {
@@ -231,51 +252,38 @@ const totalAmount = customers.reduce((sum, c) => sum + c.loanAmount, 0);
   };
 
   // ===== SUMMARY CALCULATIONS =====
-// ===== SUMMARY CALCULATIONS (ADDED ONLY) =====
-const activeCustomers = customers.filter(
-  (c) => c.status === "active"
-);
+  // ===== SUMMARY CALCULATIONS (ADDED ONLY) =====
+  const activeCustomers = customers.filter((c) => c.status === "active");
 
-const closedCustomers = customers.filter(
-  (c) => c.status === "closed"
-);
+  const closedCustomers = customers.filter((c) => c.status === "closed");
 
-const pendingCustomers = customers.filter(
-  (c) => c.status === "pending"
-);
+  const pendingCustomers = customers.filter((c) => c.status === "pending");
 
-const defaultedCustomers = customers.filter(
-  (c) => c.status === "defaulted"
-);
+  const defaultedCustomers = customers.filter((c) => c.status === "defaulted");
 
-const totalCustomers = customers.length;
+  const totalCustomers = customers.length;
 
-const activeAmount = activeCustomers.reduce(
-  (sum, c) => sum + c.loanAmount,
-  0
-);
+  const activeAmount = activeCustomers.reduce(
+    (sum, c) => sum + c.loanAmount,
+    0
+  );
 
-const closedAmount = closedCustomers.reduce(
-  (sum, c) => sum + c.loanAmount,
-  0
-);
+  const closedAmount = closedCustomers.reduce(
+    (sum, c) => sum + c.loanAmount,
+    0
+  );
 
-const pendingAmount = pendingCustomers.reduce(
-  (sum, c) => sum + c.loanAmount,
-  0
-);
+  const pendingAmount = pendingCustomers.reduce(
+    (sum, c) => sum + c.loanAmount,
+    0
+  );
 
-const defaultedAmount = defaultedCustomers.reduce(
-  (sum, c) => sum + c.loanAmount,
-  0
-);
+  const defaultedAmount = defaultedCustomers.reduce(
+    (sum, c) => sum + c.loanAmount,
+    0
+  );
 
-const totalAmount = customers.reduce(
-  (sum, c) => sum + c.loanAmount,
-  0
-);
-
-
+  const totalAmount = customers.reduce((sum, c) => sum + c.loanAmount, 0);
 
   const getTermDuration = (customer: Loan) => {
     if (customer.term === "months" && customer.months) {
@@ -394,6 +402,7 @@ const totalAmount = customers.reduce(
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
+
           <div className="flex gap-2 flex-wrap">
             <Button
               variant="outline"
@@ -409,91 +418,106 @@ const totalAmount = customers.reduce(
               Export
             </Button>
           </div>
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="border rounded-md px-3 py-2 text-sm bg-background"
+          >
+            <option value="all">All Status</option>
+            <option value="active">Active</option>
+            <option value="closed">Closed</option>
+            <option value="pending">Pending</option>
+            <option value="defaulted">Defaulted</option>
+          </select>
         </div>
 
-  {customers.length > 0 && (
-  <div className="space-y-4 animate-slide-up">
+        {customers.length > 0 && (
+          <div className="space-y-4 animate-slide-up">
+            {/* ===== CUSTOMER COUNTS ===== */}
+            <div className="grid grid-cols-1 sm:grid-cols-5 gap-4">
+              <div className="bg-card rounded-xl p-4 border">
+                <p className="text-sm text-muted-foreground">
+                  Active Customers
+                </p>
+                <p className="text-2xl font-bold text-green-600">
+                  {activeCustomers.length}
+                </p>
+              </div>
 
-    {/* ===== CUSTOMER COUNTS ===== */}
-    <div className="grid grid-cols-1 sm:grid-cols-5 gap-4">
-      <div className="bg-card rounded-xl p-4 border">
-        <p className="text-sm text-muted-foreground">Active Customers</p>
-        <p className="text-2xl font-bold text-green-600">
-          {activeCustomers.length}
-        </p>
-      </div>
+              <div className="bg-card rounded-xl p-4 border">
+                <p className="text-sm text-muted-foreground">
+                  Closed Customers
+                </p>
+                <p className="text-2xl font-bold text-blue-600">
+                  {closedCustomers.length}
+                </p>
+              </div>
 
-      <div className="bg-card rounded-xl p-4 border">
-        <p className="text-sm text-muted-foreground">Closed Customers</p>
-        <p className="text-2xl font-bold text-blue-600">
-          {closedCustomers.length}
-        </p>
-      </div>
+              <div className="bg-card rounded-xl p-4 border">
+                <p className="text-sm text-muted-foreground">
+                  Pending Customers
+                </p>
+                <p className="text-2xl font-bold text-yellow-600">
+                  {pendingCustomers.length}
+                </p>
+              </div>
 
-      <div className="bg-card rounded-xl p-4 border">
-        <p className="text-sm text-muted-foreground">Pending Customers</p>
-        <p className="text-2xl font-bold text-yellow-600">
-          {pendingCustomers.length}
-        </p>
-      </div>
+              <div className="bg-card rounded-xl p-4 border">
+                <p className="text-sm text-muted-foreground">
+                  Defaulted Customers
+                </p>
+                <p className="text-2xl font-bold text-red-600">
+                  {defaultedCustomers.length}
+                </p>
+              </div>
 
-      <div className="bg-card rounded-xl p-4 border">
-        <p className="text-sm text-muted-foreground">Defaulted Customers</p>
-        <p className="text-2xl font-bold text-red-600">
-          {defaultedCustomers.length}
-        </p>
-      </div>
+              <div className="bg-card rounded-xl p-4 border">
+                <p className="text-sm text-muted-foreground">Total Customers</p>
+                <p className="text-2xl font-bold">{totalCustomers}</p>
+              </div>
+            </div>
 
-      <div className="bg-card rounded-xl p-4 border">
-        <p className="text-sm text-muted-foreground">Total Customers</p>
-        <p className="text-2xl font-bold">
-          {totalCustomers}
-        </p>
-      </div>
-    </div>
+            {/* ===== AMOUNTS ===== */}
+            <div className="grid grid-cols-1 sm:grid-cols-5 gap-4">
+              <div className="bg-card rounded-xl p-4 border">
+                <p className="text-sm text-muted-foreground">Active Amount</p>
+                <p className="text-2xl font-bold text-green-600">
+                  {formatCurrency(activeAmount)}
+                </p>
+              </div>
 
-    {/* ===== AMOUNTS ===== */}
-    <div className="grid grid-cols-1 sm:grid-cols-5 gap-4">
-      <div className="bg-card rounded-xl p-4 border">
-        <p className="text-sm text-muted-foreground">Active Amount</p>
-        <p className="text-2xl font-bold text-green-600">
-          {formatCurrency(activeAmount)}
-        </p>
-      </div>
+              <div className="bg-card rounded-xl p-4 border">
+                <p className="text-sm text-muted-foreground">Closed Amount</p>
+                <p className="text-2xl font-bold text-blue-600">
+                  {formatCurrency(closedAmount)}
+                </p>
+              </div>
 
-      <div className="bg-card rounded-xl p-4 border">
-        <p className="text-sm text-muted-foreground">Closed Amount</p>
-        <p className="text-2xl font-bold text-blue-600">
-          {formatCurrency(closedAmount)}
-        </p>
-      </div>
+              <div className="bg-card rounded-xl p-4 border">
+                <p className="text-sm text-muted-foreground">Pending Amount</p>
+                <p className="text-2xl font-bold text-yellow-600">
+                  {formatCurrency(pendingAmount)}
+                </p>
+              </div>
 
-      <div className="bg-card rounded-xl p-4 border">
-        <p className="text-sm text-muted-foreground">Pending Amount</p>
-        <p className="text-2xl font-bold text-yellow-600">
-          {formatCurrency(pendingAmount)}
-        </p>
-      </div>
+              <div className="bg-card rounded-xl p-4 border">
+                <p className="text-sm text-muted-foreground">
+                  Defaulted Amount
+                </p>
+                <p className="text-2xl font-bold text-red-600">
+                  {formatCurrency(defaultedAmount)}
+                </p>
+              </div>
 
-      <div className="bg-card rounded-xl p-4 border">
-        <p className="text-sm text-muted-foreground">Defaulted Amount</p>
-        <p className="text-2xl font-bold text-red-600">
-          {formatCurrency(defaultedAmount)}
-        </p>
-      </div>
-
-      <div className="bg-card rounded-xl p-4 border">
-        <p className="text-sm text-muted-foreground">Total Amount</p>
-        <p className="text-2xl font-bold">
-          {formatCurrency(totalAmount)}
-        </p>
-      </div>
-    </div>
-
-  </div>
-)}
-
-
+              <div className="bg-card rounded-xl p-4 border">
+                <p className="text-sm text-muted-foreground">Total Amount</p>
+                <p className="text-2xl font-bold">
+                  {formatCurrency(totalAmount)}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Content */}
         {loading ? (
