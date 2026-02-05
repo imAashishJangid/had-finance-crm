@@ -1,3 +1,4 @@
+import { useLocation } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import api from "@/config/api";
@@ -19,6 +20,10 @@ export default function CustomerForm() {
   const { id } = useParams();
   const isEditMode = Boolean(id);
 
+  const location = useLocation();
+const stateCustomer = location.state?.customer;
+
+
   const [formData, setFormData] = useState({
     name: "",
     phone: "",
@@ -31,34 +36,67 @@ export default function CustomerForm() {
     months: "",
     years: "",
     notes: "",
-    joinDate: new Date().toISOString().split("T")[0], // default current date YYYY-MM-DD
+    joinDate: new Date().toISOString().split("T")[0],
   });
+
+  // 🔥 ORIGINAL DATA (for comparison)
+  const [originalData, setOriginalData] = useState<any>(null);
 
   const [image, setImage] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    if (isEditMode) {
-      api.get(`/api/loans/${id}`).then((res) => {
-        const d = res.data.data;
+useEffect(() => {
+  if (isEditMode && stateCustomer) {
+    // 👉 Edit button se aaya
+    const d = stateCustomer;
 
-        setFormData({
-          name: d.name,
-          phone: d.phone,
-          address: d.address || "",
-          idType: d.idType,
-          idNumber: d.idNumber,
-          loanAmount: d.loanAmount.toString(),
-          interestRate: d.interestRate.toString(),
-          term: d.term,
-          months: d.months?.toString() || "",
-          years: d.years?.toString() || "",
-          notes: d.notes || "",
-          joinDate: d.joinDate ? d.joinDate.split("T")[0] : new Date().toISOString().split("T")[0],
-        });
-      });
-    }
-  }, [id]);
+    const preparedData = {
+      name: d.name,
+      phone: String(d.phone).trim(),
+      address: d.address || "",
+      idType: d.idType,
+      idNumber: String(d.idNumber).trim(),
+      loanAmount: d.loanAmount.toString(),
+      interestRate: d.interestRate.toString(),
+      term: d.term,
+      months: d.months?.toString() || "",
+      years: d.years?.toString() || "",
+      notes: d.notes || "",
+      joinDate: d.joinDate
+        ? d.joinDate.split("T")[0]
+        : new Date().toISOString().split("T")[0],
+    };
+
+    setFormData(preparedData);
+    setOriginalData(preparedData);
+  } else if (isEditMode) {
+    // 👉 Direct URL / refresh
+    api.get(`/api/loans/${id}`).then((res) => {
+      const d = res.data.data;
+
+      const preparedData = {
+        name: d.name,
+        phone: String(d.phone).trim(),
+        address: d.address || "",
+        idType: d.idType,
+        idNumber: String(d.idNumber).trim(),
+        loanAmount: d.loanAmount.toString(),
+        interestRate: d.interestRate.toString(),
+        term: d.term,
+        months: d.months?.toString() || "",
+        years: d.years?.toString() || "",
+        notes: d.notes || "",
+        joinDate: d.joinDate
+          ? d.joinDate.split("T")[0]
+          : new Date().toISOString().split("T")[0],
+      };
+
+      setFormData(preparedData);
+      setOriginalData(preparedData);
+    });
+  }
+}, [id, stateCustomer]);
+
 
   const handleChange = (field: string, value: string) => {
     setFormData((prev) => ({
@@ -67,72 +105,56 @@ export default function CustomerForm() {
     }));
   };
 
-const handleSubmit = async () => {
-  // Required field validation
-  const requiredFields = ["name", "phone", "idType", "idNumber", "loanAmount", "interestRate"];
+  const handleSubmit = async () => {
+    setLoading(true);
 
-  for (const field of requiredFields) {
-    if (!formData[field]) {
-      toast.error(`Please fill the ${field} field`);
-      return;
+    try {
+      const data = new FormData();
+
+      Object.entries(formData).forEach(([key, value]) => {
+        if (value === "") return;
+
+        // 🔥 EDIT MODE FIX: same phone / idNumber skip
+        if (
+          isEditMode &&
+          originalData &&
+          (key === "phone" || key === "idNumber") &&
+          String(value).trim() === String(originalData[key]).trim()
+        ) {
+          return;
+        }
+
+        data.append(key, String(value).trim());
+      });
+
+      if (image) {
+        data.append("customerImage", image);
+      }
+
+      console.log("FINAL FORM DATA (EDIT SAFE)");
+
+      const response = isEditMode
+        ? await api.put(`/api/loans/${id}`, data)
+        : await api.post("/api/loans", data);
+
+      toast.success(
+        isEditMode
+          ? "Customer & loan updated successfully!"
+          : "Customer & loan added successfully!"
+      );
+
+      navigate("/customers");
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to save customer. Please try again.");
+    } finally {
+      setLoading(false);
     }
-  }
-
-  if (formData.term === "months" && !formData.months) {
-    toast.error("Please enter number of months");
-    return;
-  }
-
-  if (formData.term === "years" && !formData.years) {
-    toast.error("Please enter number of years");
-    return;
-  }
-
-  const loanAmount = parseFloat(formData.loanAmount);
-  const interestRate = parseFloat(formData.interestRate);
-
-  if (isNaN(loanAmount) || loanAmount <= 0) {
-    toast.error("Loan amount must be a positive number");
-    return;
-  }
-
-  if (isNaN(interestRate) || interestRate < 0) {
-    toast.error("Interest rate must be a positive number");
-    return;
-  }
-
-  setLoading(true);
-
-  try {
-    const data = new FormData();
-    Object.entries(formData).forEach(([key, value]) => {
-      if (value !== "") data.append(key, value);
-    });
-
-    if (image) data.append("customerImage", image);
-
-    const response = isEditMode
-      ? await api.put(`/api/loans/${id}`, data, { headers: { "Content-Type": "multipart/form-data" } })
-      : await api.post("/api/loans", data, { headers: { "Content-Type": "multipart/form-data" } });
-
-    toast.success(
-      isEditMode
-        ? "Customer & loan updated successfully!"
-        : "Customer & loan added successfully!"
-    );
-
-    navigate("/customers");
-  } catch (error) {
-    console.error(error);
-    toast.error("Failed to save customer. Please try again.");
-  } finally {
-    setLoading(false);
-  }
-};
-
-  const handleCancel = () => {
-    navigate(-1);
   };
+
+  const handleCancel = () => navigate(-1);
+
+  
 
   return (
     <DashboardLayout>

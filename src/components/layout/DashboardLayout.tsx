@@ -28,9 +28,7 @@ const navItems = [
   { icon: Users, label: "Customers", path: "/customers" },
   { icon: CreditCard, label: "Loans", path: "/loans" },
   { icon: Wallet, label: "Payments", path: "/payments" },
-  { icon: BarChart3, label: "Analytics", path: "/analytics" },
-  { icon: HelpCircle, label: "Support", path: "/support" },
-  { icon: Calculator , label: "Calculator", path: "/calculator" }, 
+   { icon: Calculator , label: "Calculator", path: "/calculator" }, 
   { icon: FileClock , label: "History", path: "/history" }, 
 ];
 
