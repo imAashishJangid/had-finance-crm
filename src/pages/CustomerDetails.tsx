@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import api from "@/config/api";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "@/components/ui/sonner";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
@@ -23,7 +23,6 @@ import {
   ArrowLeft,
   AlertCircle,
   CreditCard,
-  Smartphone,
   DollarSign,
   MoreVertical,
   CheckCircle,
@@ -32,6 +31,7 @@ import {
   FileDigit,
   TrendingUp,
   Target,
+  ChevronDown,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -40,40 +40,34 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 
 const statusConfig = {
   active: {
-    color: "bg-emerald-500",
-    bg: "bg-emerald-50",
-    text: "text-emerald-700",
-    border: "border-emerald-200",
+    label: "Active",
+    color: "text-green-600",
+    bg: "bg-green-100",
+    border: "border-green-200",
     icon: <CheckCircle className="w-4 h-4" />
   },
   closed: {
-    color: "bg-blue-500",
-    bg: "bg-blue-50",
-    text: "text-blue-700",
+    label: "Closed",
+    color: "text-blue-600",
+    bg: "bg-blue-100",
     border: "border-blue-200",
     icon: <CheckCircle className="w-4 h-4" />
   },
   pending: {
-    color: "bg-amber-500",
-    bg: "bg-amber-50",
-    text: "text-amber-700",
-    border: "border-amber-200",
+    label: "Pending",
+    color: "text-yellow-600",
+    bg: "bg-yellow-100",
+    border: "border-yellow-200",
     icon: <Clock className="w-4 h-4" />
   },
   defaulted: {
-    color: "bg-rose-500",
-    bg: "bg-rose-50",
-    text: "text-rose-700",
-    border: "border-rose-200",
+    label: "Defaulted",
+    color: "text-red-600",
+    bg: "bg-red-100",
+    border: "border-red-200",
     icon: <AlertTriangle className="w-4 h-4" />
   }
 };
@@ -83,19 +77,30 @@ export default function CustomerDetails() {
   const navigate = useNavigate();
   const [customer, setCustomer] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   useEffect(() => {
-    fetchCustomer();
+    if (id) {
+      fetchCustomer();
+    }
   }, [id]);
 
   const fetchCustomer = async () => {
     try {
+      setLoading(true);
+      setError(null);
       const res = await api.get(`/api/loans/${id}`);
-      setCustomer(res.data.data);
-    } catch (error) {
+      
+      if (res.data.success) {
+        setCustomer(res.data.data);
+      } else {
+        setError("Failed to load customer data");
+      }
+    } catch (error: any) {
       console.error("Error fetching customer:", error);
+      setError(error.response?.data?.message || "Failed to load customer details");
       toast.error("Failed to load customer details");
     } finally {
       setLoading(false);
@@ -107,8 +112,10 @@ export default function CustomerDetails() {
       const res = await api.put(`/api/loans/${id}`, {
         status: newStatus,
       });
-      setCustomer(res.data.data);
-      toast.success("Status updated successfully!");
+      if (res.data.success) {
+        setCustomer(res.data.data);
+        toast.success("Status updated successfully!");
+      }
     } catch (error) {
       console.error(error);
       toast.error("Failed to update status");
@@ -147,12 +154,18 @@ export default function CustomerDetails() {
     });
   };
 
+  const getStatusConfig = () => {
+    if (!customer?.status) return statusConfig.pending;
+    return statusConfig[customer.status as keyof typeof statusConfig] || statusConfig.pending;
+  };
+
   // Loading Skeleton
   if (loading) {
     return (
       <DashboardLayout>
         <div className="w-full px-4 py-6">
           <div className="max-w-6xl mx-auto">
+            {/* Header Skeleton */}
             <div className="mb-8">
               <div className="flex items-center gap-4 mb-6">
                 <Skeleton className="h-12 w-12 rounded-full" />
@@ -161,9 +174,26 @@ export default function CustomerDetails() {
                   <Skeleton className="h-4 w-32" />
                 </div>
               </div>
-              <Skeleton className="h-10 w-full" />
+              
+              {/* Stats Grid Skeleton */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                {[...Array(4)].map((_, i) => (
+                  <Card key={i}>
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <Skeleton className="h-4 w-20 mb-2" />
+                          <Skeleton className="h-6 w-16" />
+                        </div>
+                        <Skeleton className="h-10 w-10 rounded-lg" />
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
             </div>
             
+            {/* Content Skeleton */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <div className="lg:col-span-2 space-y-6">
                 <Skeleton className="h-64 w-full rounded-xl" />
@@ -180,23 +210,28 @@ export default function CustomerDetails() {
     );
   }
 
-  if (!customer) {
+  // Error State
+  if (error || !customer) {
     return (
       <DashboardLayout>
         <div className="w-full px-4 py-6">
           <div className="max-w-2xl mx-auto">
-            <Card className="border-2 border-dashed">
+            <Card className="border">
               <CardContent className="py-16">
                 <div className="text-center">
-                  <div className="w-20 h-20 mx-auto rounded-full bg-rose-100 flex items-center justify-center mb-6">
-                    <User className="w-10 h-10 text-rose-600" />
+                  <div className="w-20 h-20 mx-auto rounded-full bg-red-50 flex items-center justify-center mb-6">
+                    <AlertCircle className="w-10 h-10 text-red-600" />
                   </div>
                   <h3 className="text-2xl font-bold mb-2">Customer Not Found</h3>
-                  <p className="text-muted-foreground mb-6">
-                    The customer you're looking for doesn't exist or has been removed.
+                  <p className="text-gray-600 mb-6">
+                    {error || "The customer you're looking for doesn't exist or has been removed."}
                   </p>
-                  <Button onClick={() => navigate("/customers")} variant="default">
-                    <ArrowLeft className="w-4 h-4 mr-2" />
+                  <Button 
+                    onClick={() => navigate("/customers")} 
+                    variant="default"
+                    className="gap-2"
+                  >
+                    <ArrowLeft className="w-4 h-4" />
                     Back to Customers
                   </Button>
                 </div>
@@ -208,157 +243,187 @@ export default function CustomerDetails() {
     );
   }
 
-  const status = statusConfig[customer.status as keyof typeof statusConfig] || statusConfig.pending;
+  const status = getStatusConfig();
 
   return (
     <DashboardLayout>
       <div className="w-full px-4 py-6">
         <div className="max-w-6xl mx-auto">
-          {/* Top Header Section */}
-          <div className="mb-8">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-              <div className="flex items-center gap-4">
-                <div className="relative">
-                  <div className="w-16 h-16 rounded-2xl overflow-hidden border-4 border-white shadow-lg">
-                    {customer.customerImage?.url ? (
-                      <img
-                        src={customer.customerImage.url}
-                        alt={customer.name}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-full h-full bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center">
-                        <User className="w-8 h-8 text-slate-400" />
-                      </div>
-                    )}
-                  </div>
-                  <div className={`absolute -bottom-1 -right-1 w-6 h-6 rounded-full border-2 border-white ${status.color}`} />
-                </div>
-                <div>
-                  <h1 className="text-2xl sm:text-3xl font-bold">{customer.name}</h1>
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className="text-muted-foreground">{customer.phone}</span>
-                    <span className="text-muted-foreground">•</span>
-                    <span className="text-muted-foreground">ID: {customer._id?.slice(-6)}</span>
-                  </div>
+          {/* Back Button at Top */}
+         
+
+          {/* Customer Profile Header */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+            <div className="flex items-center gap-4">
+              <div className="relative">
+                <div className="w-16 h-16 rounded-xl overflow-hidden border-2 border-gray-200">
+                  {customer.customerImage?.url ? (
+                    <img
+                      src={customer.customerImage.url}
+                      alt={customer.name}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-gray-100 flex items-center justify-center">
+                      <User className="w-8 h-8 text-gray-400" />
+                    </div>
+                  )}
                 </div>
               </div>
               
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">{customer.name}</h1>
+                <div className="flex items-center gap-3 mt-1">
+                  <div className="flex items-center gap-1 text-gray-600">
+                    <Phone className="w-4 h-4" />
+                    <span className="text-sm">{customer.phone}</span>
+                  </div>
+                  {customer.idNumber && (
+                    <>
+                      <div className="w-1 h-1 rounded-full bg-gray-300" />
+                       
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+             
+              
                
             </div>
+          </div>
 
-            {/* Quick Stats Bar */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-              <Card className="bg-white border-slate-200">
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-muted-foreground">Loan Amount</p>
-                      <p className="text-xl font-bold">{formatCurrency(customer.loanAmount)}</p>
-                    </div>
-                    <div className="p-2 rounded-lg bg-emerald-100">
-                      <DollarSign className="w-5 h-5 text-emerald-600" />
+          {/* Quick Stats with Status Dropdown in Status Card */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-600 mb-1">Loan Amount</p>
+                    <p className="text-xl font-bold text-gray-900">
+                      {formatCurrency(customer.loanAmount)}
+                    </p>
+                  </div>
+                  <div className="p-2 rounded-lg bg-blue-50">
+                    <IndianRupee className="w-5 h-5 text-blue-600" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-600 mb-1">Interest Rate</p>
+                    <p className="text-xl font-bold text-gray-900">{customer.interestRate}%</p>
+                  </div>
+                  <div className="p-2 rounded-lg bg-green-50">
+                    <Percent className="w-5 h-5 text-green-600" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-600 mb-1">Monthly EMI</p>
+                    <p className="text-xl font-bold text-gray-900">
+                      {formatCurrency(customer.monthlyInstallment)}
+                    </p>
+                  </div>
+                  <div className="p-2 rounded-lg bg-purple-50">
+                    <CreditCard className="w-5 h-5 text-purple-600" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Status Card with Dropdown */}
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-600 mb-1">Status</p>
+                    <div className="flex items-center gap-2">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button 
+                            variant="ghost" 
+                            className={`${status.bg} ${status.color} ${status.border} h-8 px-3 gap-2 hover:bg-opacity-80`}
+                          >
+                            {status.icon}
+                            <span className="font-medium capitalize">{customer.status}</span>
+                            <ChevronDown className="w-3 h-3" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-40">
+                          <DropdownMenuItem 
+                            onClick={() => handleStatusChange("active")}
+                            className="gap-2"
+                          >
+                            <CheckCircle className="w-4 h-4 text-green-600" />
+                            Active
+                          </DropdownMenuItem>
+                          <DropdownMenuItem 
+                            onClick={() => handleStatusChange("closed")}
+                            className="gap-2"
+                          >
+                            <CheckCircle className="w-4 h-4 text-blue-600" />
+                            Closed
+                          </DropdownMenuItem>
+                          <DropdownMenuItem 
+                            onClick={() => handleStatusChange("pending")}
+                            className="gap-2"
+                          >
+                            <Clock className="w-4 h-4 text-yellow-600" />
+                            Pending
+                          </DropdownMenuItem>
+                          <DropdownMenuItem 
+                            onClick={() => handleStatusChange("defaulted")}
+                            className="gap-2"
+                          >
+                            <AlertTriangle className="w-4 h-4 text-red-600" />
+                            Defaulted
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   </div>
-                </CardContent>
-              </Card>
-
-              <Card className="bg-white border-slate-200">
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-muted-foreground">Interest Rate</p>
-                      <p className="text-xl font-bold">{customer.interestRate}%</p>
-                    </div>
-                    <div className="p-2 rounded-lg bg-blue-100">
-                      <Percent className="w-5 h-5 text-blue-600" />
-                    </div>
+                  <div className="p-2 rounded-lg bg-gray-100">
+                    <Target className="w-5 h-5 text-gray-600" />
                   </div>
-                </CardContent>
-              </Card>
-
-              <Card className="bg-white border-slate-200">
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-muted-foreground">Monthly EMI</p>
-                      <p className="text-xl font-bold">{formatCurrency(customer.monthlyInstallment)}</p>
-                    </div>
-                    <div className="p-2 rounded-lg bg-violet-100">
-                      <CreditCard className="w-5 h-5 text-violet-600" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="bg-white border-slate-200">
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-muted-foreground">Status</p>
-                      <div className="flex items-center gap-2">
-                        <Badge 
-                          variant="outline" 
-                          className={`${status.bg} ${status.text} ${status.border} gap-1`}
-                        >
-                          {status.icon}
-                          <span className="capitalize">{customer.status}</span>
-                        </Badge>
-                      </div>
-                    </div>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                          <MoreVertical className="w-4 h-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => handleStatusChange("active")}>
-                          <CheckCircle className="w-4 h-4 mr-2 text-emerald-600" />
-                          Mark Active
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleStatusChange("closed")}>
-                          <CheckCircle className="w-4 h-4 mr-2 text-blue-600" />
-                          Mark Closed
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleStatusChange("pending")}>
-                          <Clock className="w-4 h-4 mr-2 text-amber-600" />
-                          Mark Pending
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleStatusChange("defaulted")}>
-                          <AlertTriangle className="w-4 h-4 mr-2 text-rose-600" />
-                          Mark Defaulted
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+                </div>
+              </CardContent>
+            </Card>
           </div>
 
           {/* Main Content */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Left Column - Customer Info */}
+            {/* Left Column */}
             <div className="lg:col-span-2 space-y-6">
-              {/* Customer Details Card */}
-              <Card className="border-slate-200">
-                <CardHeader className="pb-4">
-                  <CardTitle className="flex items-center gap-2">
-                    <User className="w-5 h-5" />
+              {/* Customer Information Card */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <User className="w-5 h-5 text-gray-600" />
                     Customer Information
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-4">
                       <div>
                         <div className="flex items-center gap-3 mb-2">
-                          <div className="p-2 rounded-md bg-slate-100">
-                            <Smartphone className="w-4 h-4 text-slate-600" />
+                          <div className="p-2 rounded-md bg-gray-100">
+                            <Phone className="w-4 h-4 text-gray-600" />
                           </div>
                           <div>
-                            <p className="text-sm text-muted-foreground">Phone Number</p>
+                            <p className="text-sm text-gray-500">Phone Number</p>
                             <p className="font-medium">{customer.phone || "Not provided"}</p>
                           </div>
                         </div>
@@ -372,39 +437,48 @@ export default function CustomerDetails() {
                         )}
                       </div>
 
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 rounded-md bg-slate-100">
-                          <MapPin className="w-4 h-4 text-slate-600" />
+                      <div>
+                        <div className="flex items-center gap-3 mb-2">
+                          <div className="p-2 rounded-md bg-gray-100">
+                            <MapPin className="w-4 h-4 text-gray-600" />
+                          </div>
+                          <div>
+                            <p className="text-sm text-gray-500">Address</p>
+                            <p className="font-medium">{customer.address || "Not provided"}</p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="text-sm text-muted-foreground">Address</p>
-                          <p className="font-medium">{customer.address || "Not provided"}</p>
-                        </div>
+                        
                       </div>
                     </div>
 
                     <div className="space-y-4">
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 rounded-md bg-slate-100">
-                          <Calendar className="w-4 h-4 text-slate-600" />
-                        </div>
-                        <div>
-                          <p className="text-sm text-muted-foreground">Join Date</p>
-                          <p className="font-medium">{formatDate(customer.joinDate)}</p>
+                      <div>
+                        <div className="flex items-center gap-3 mb-2">
+                          <div className="p-2 rounded-md bg-gray-100">
+                            <Calendar className="w-4 h-4 text-gray-600" />
+                          </div>
+                          <div>
+                            <p className="text-sm text-gray-500">Join Date</p>
+                            <p className="font-medium">{formatDate(customer.joinDate)}</p>
+                          </div>
                         </div>
                       </div>
 
                       <div>
                         <div className="flex items-center gap-3 mb-2">
-                          <div className="p-2 rounded-md bg-slate-100">
-                            <FileDigit className="w-4 h-4 text-slate-600" />
+                          <div className="p-2 rounded-md bg-gray-100">
+                            <FileDigit className="w-4 h-4 text-gray-600" />
                           </div>
                           <div>
-                            <p className="text-sm text-muted-foreground">ID Type</p>
-                            <Badge variant="secondary">{customer.idType}</Badge>
+                            <p className="text-sm text-gray-500">ID Information</p>
+                            <div className="mt-1">
+                              <Badge variant="secondary" className="mr-2">
+                                {customer.idType}
+                              </Badge>
+                              <span className="text-sm font-mono">{customer.idNumber}</span>
+                            </div>
                           </div>
                         </div>
-                        <p className="text-sm font-mono bg-slate-100 p-2 rounded">{customer.idNumber}</p>
                       </div>
                     </div>
                   </div>
@@ -412,70 +486,82 @@ export default function CustomerDetails() {
               </Card>
 
               {/* Loan Details Card */}
-              <Card className="border-slate-200">
-                <CardHeader className="pb-4">
-                  <CardTitle className="flex items-center gap-2">
-                    <CreditCard className="w-5 h-5" />
-                    Loan Information
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <CreditCard className="w-5 h-5 text-gray-600" />
+                    Loan Details
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-4">
-                      <div className="p-4 rounded-lg bg-slate-50 border">
-                        <div className="flex justify-between items-center mb-2">
-                          <span className="text-sm text-muted-foreground">Principal Amount</span>
-                          <span className="font-semibold">{formatCurrency(customer.loanAmount)}</span>
-                        </div>
-                        <div className="flex justify-between items-center mb-2">
-                          <span className="text-sm text-muted-foreground">Interest Rate</span>
-                          <span className="font-semibold">{customer.interestRate}%</span>
-                        </div>
-                        <div className="flex justify-between items-center mb-2">
-                          <span className="text-sm text-muted-foreground">Term Type</span>
-                          <Badge variant="outline">{customer.term}</Badge>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-sm text-muted-foreground">Duration</span>
-                          <span className="font-semibold">
-                            {customer.term === "months" 
-                              ? `${customer.months} Months` 
-                              : `${customer.years} Years`
-                            }
-                          </span>
+                      <div className="p-4 rounded-lg border bg-gray-50">
+                        <h4 className="font-medium mb-3 text-gray-700">Loan Terms</h4>
+                        <div className="space-y-3">
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm text-gray-600">Principal Amount</span>
+                            <span className="font-semibold">{formatCurrency(customer.loanAmount)}</span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm text-gray-600">Interest Rate</span>
+                            <span className="font-semibold">{customer.interestRate}%</span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm text-gray-600">Term Type</span>
+                            <Badge variant="outline">{customer.term}</Badge>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm text-gray-600">Duration</span>
+                            <span className="font-semibold">
+                              {customer.term === "months" 
+                                ? `${customer.months || 0} Months` 
+                                : `${customer.years || 0} Years`
+                              }
+                            </span>
+                          </div>
                         </div>
                       </div>
                     </div>
 
                     <div className="space-y-4">
-                      <div className="p-4 rounded-lg bg-gradient-to-r from-emerald-50 to-emerald-100 border border-emerald-200">
-                        <div className="flex justify-between items-center mb-2">
+                      <div className="p-4 rounded-lg border border-green-200 bg-green-50">
+                        <div className="flex items-center justify-between mb-4">
                           <div>
-                            <p className="text-sm text-emerald-700">Total Payable</p>
-                            <p className="text-2xl font-bold text-emerald-900">{formatCurrency(customer.totalPayable)}</p>
+                            <p className="text-sm text-green-700 font-medium">Total Repayment</p>
+                            <p className="text-2xl font-bold text-green-900">
+                              {formatCurrency(customer.totalPayable)}
+                            </p>
                           </div>
-                          <TrendingUp className="w-8 h-8 text-emerald-600" />
+                          <TrendingUp className="w-8 h-8 text-green-600" />
                         </div>
-                        <Progress 
-                          value={(customer.loanAmount / customer.totalPayable) * 100} 
-                          className="h-2 bg-emerald-200"
-                        />
-                        <div className="flex justify-between text-xs text-emerald-700 mt-2">
-                          <span>Principal</span>
-                          <span>Total</span>
+                        
+                        <div className="space-y-3">
+                          <div className="flex justify-between text-sm">
+                            <span className="text-green-700">Principal Amount</span>
+                            <span className="font-medium">{formatCurrency(customer.loanAmount)}</span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-green-700">Interest Amount</span>
+                            <span className="font-medium">
+                              {formatCurrency(customer.totalPayable - customer.loanAmount)}
+                            </span>
+                          </div>
                         </div>
                       </div>
 
                       <div className="grid grid-cols-2 gap-3">
-                        <div className="p-3 rounded-lg bg-blue-50 border border-blue-200">
-                          <p className="text-xs text-blue-700 mb-1">Interest Amount</p>
-                          <p className="font-bold text-blue-900">
-                            {formatCurrency(customer.totalPayable - customer.loanAmount)}
+                        <div className="p-3 rounded-lg border border-blue-200 bg-blue-50">
+                          <p className="text-xs text-blue-700 font-medium mb-1">Monthly EMI</p>
+                          <p className="text-lg font-bold text-blue-900">
+                            {formatCurrency(customer.monthlyInstallment)}
                           </p>
                         </div>
-                        <div className="p-3 rounded-lg bg-violet-50 border border-violet-200">
-                          <p className="text-xs text-violet-700 mb-1">Monthly EMI</p>
-                          <p className="font-bold text-violet-900">{formatCurrency(customer.monthlyInstallment)}</p>
+                        <div className="p-3 rounded-lg border border-purple-200 bg-purple-50">
+                          <p className="text-xs text-purple-700 font-medium mb-1">Interest Amount</p>
+                          <p className="text-lg font-bold text-purple-900">
+                            {formatCurrency(customer.totalPayable - customer.loanAmount)}
+                          </p>
                         </div>
                       </div>
                     </div>
@@ -484,104 +570,95 @@ export default function CustomerDetails() {
               </Card>
             </div>
 
-            {/* Right Column - Actions & Info */}
+            {/* Right Column */}
             <div className="space-y-6">
-              {/* Actions Card */}
-              <Card className="border-slate-200">
-                <CardHeader className="pb-4">
-                  <CardTitle className="text-lg">Actions</CardTitle>
+              {/* Timeline Card */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Clock className="w-5 h-5 text-gray-600" />
+                    Timeline
+                  </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-3">
-                  <Button 
-                    variant="default" 
-                    className="w-full justify-start"
-                    onClick={() => navigate(`/customer-form/${id}`)}
-                  >
-                    <Edit className="w-4 h-4 mr-3" />
-                    Edit Customer
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    className="w-full justify-start"
-                    onClick={() => window.print()}
-                  >
-                    <Printer className="w-4 h-4 mr-3" />
-                    Print Details
-                  </Button>
-                  <Button 
-                    variant="destructive" 
-                    className="w-full justify-start"
-                    onClick={() => setShowDeleteConfirm(true)}
-                  >
-                    <Trash2 className="w-4 h-4 mr-3" />
-                    Delete Customer
-                  </Button>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="flex items-start gap-3">
+                      <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0">
+                        <Calendar className="w-4 h-4 text-gray-600" />
+                      </div>
+                      <div>
+                        <p className="font-medium text-sm text-gray-900">Account Created</p>
+                        <p className="text-xs text-gray-500">{formatDate(customer.createdAt)}</p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-start gap-3">
+                      <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0">
+                        <Clock className="w-4 h-4 text-gray-600" />
+                      </div>
+                      <div>
+                        <p className="font-medium text-sm text-gray-900">Last Updated</p>
+                        <p className="text-xs text-gray-500">{formatDate(customer.updatedAt)}</p>
+                      </div>
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
 
               {/* Notes Card */}
-              <Card className="border-slate-200">
-                <CardHeader className="pb-4">
+              <Card>
+                <CardHeader>
                   <CardTitle className="text-lg flex items-center gap-2">
-                    <FileText className="w-5 h-5" />
+                    <FileText className="w-5 h-5 text-gray-600" />
                     Notes
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   {customer.notes ? (
-                    <div className="p-3 bg-slate-50 rounded-lg">
-                      <p className="text-sm whitespace-pre-wrap">{customer.notes}</p>
+                    <div className="p-3 bg-gray-50 rounded-lg border">
+                      <p className="text-sm text-gray-700 whitespace-pre-wrap">{customer.notes}</p>
                     </div>
                   ) : (
-                    <div className="text-center py-4">
-                      <FileText className="w-8 h-8 mx-auto text-slate-300 mb-2" />
-                      <p className="text-sm text-muted-foreground">No notes added</p>
+                    <div className="text-center py-6">
+                      <FileText className="w-8 h-8 mx-auto text-gray-300 mb-2" />
+                      <p className="text-sm text-gray-500">No notes added</p>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="mt-2"
+                        onClick={() => navigate(`/customer-form/${id}`)}
+                      >
+                        <Edit className="w-3 h-3 mr-2" />
+                        Add Notes
+                      </Button>
                     </div>
                   )}
                 </CardContent>
               </Card>
 
-              {/* Timeline Card */}
-              <Card className="border-slate-200">
-                <CardHeader className="pb-4">
-                  <CardTitle className="text-lg">Timeline</CardTitle>
+              {/* Total Payable Card */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <DollarSign className="w-5 h-5 text-gray-600" />
+                    Total Payable
+                  </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-4">
-                    <div className="flex items-start gap-3">
-                      <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
-                        <Calendar className="w-4 h-4 text-emerald-600" />
-                      </div>
-                      <div>
-                        <p className="font-medium text-sm">Account Created</p>
-                        <p className="text-xs text-muted-foreground">{formatDate(customer.createdAt)}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-start gap-3">
-                      <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
-                        <Clock className="w-4 h-4 text-blue-600" />
-                      </div>
-                      <div>
-                        <p className="font-medium text-sm">Last Updated</p>
-                        <p className="text-xs text-muted-foreground">{formatDate(customer.updatedAt)}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-start gap-3">
-                      <div className="w-8 h-8 rounded-full bg-violet-100 flex items-center justify-center flex-shrink-0">
-                        <Target className="w-4 h-4 text-violet-600" />
-                      </div>
-                      <div>
-                        <p className="font-medium text-sm">Current Status</p>
-                        <div className="mt-1">
-                          <Badge 
-                            variant="outline" 
-                            className={`${status.bg} ${status.text} ${status.border} gap-1 text-xs`}
-                          >
-                            {status.icon}
-                            <span className="capitalize">{customer.status}</span>
-                          </Badge>
-                        </div>
-                      </div>
+                  <div className="text-center">
+                    <p className="text-3xl font-bold text-gray-900 mb-2">
+                      {formatCurrency(customer.totalPayable)}
+                    </p>
+                    <p className="text-sm text-gray-600">
+                      Loan: {formatCurrency(customer.loanAmount)} + Interest: {formatCurrency(customer.totalPayable - customer.loanAmount)}
+                    </p>
+                    <Progress 
+                      value={(customer.loanAmount / customer.totalPayable) * 100} 
+                      className="h-2 mt-4"
+                    />
+                    <div className="flex justify-between text-xs text-gray-500 mt-2">
+                      <span>Principal</span>
+                      <span>Total</span>
                     </div>
                   </div>
                 </CardContent>
@@ -593,31 +670,24 @@ export default function CustomerDetails() {
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
-        <AlertDialogContent className="max-w-md mx-4">
+        <AlertDialogContent>
           <AlertDialogHeader>
-            <div className="mx-auto w-16 h-16 rounded-full bg-rose-100 flex items-center justify-center mb-4">
-              <AlertCircle className="w-8 h-8 text-rose-600" />
+            <div className="mx-auto w-12 h-12 rounded-full bg-red-50 flex items-center justify-center mb-4">
+              <AlertCircle className="w-6 h-6 text-red-600" />
             </div>
-            <AlertDialogTitle className="text-center text-xl">Delete Customer?</AlertDialogTitle>
-            <AlertDialogDescription className="text-center">
+            <AlertDialogTitle className="text-center">Delete Customer?</AlertDialogTitle>
+            <AlertDialogDescription className="text-center text-gray-600">
               This will permanently delete <span className="font-semibold">{customer.name}</span> and all associated loan data. This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter className="flex flex-col sm:flex-row gap-3">
-            <AlertDialogCancel className="w-full sm:w-auto">Cancel</AlertDialogCancel>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
               disabled={deleting}
-              className="w-full sm:w-auto bg-rose-600 hover:bg-rose-700"
+              className="bg-red-600 hover:bg-red-700"
             >
-              {deleting ? (
-                <>
-                  <span className="animate-spin mr-2">⟳</span>
-                  Deleting...
-                </>
-              ) : (
-                "Delete Customer"
-              )}
+              {deleting ? "Deleting..." : "Delete Customer"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

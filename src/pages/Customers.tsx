@@ -512,103 +512,86 @@ useEffect(() => {
   );
 
   // Mobile Card View
-  const MobileCustomerCard = ({ customer }: { customer: Loan }) => (
-    <Card className="mb-4 hover:shadow-lg transition-shadow duration-300 border-border/60">
-      <CardContent className="p-4">
-        <div className="flex items-start justify-between mb-3">
-          <div className="flex items-center gap-3">
-            {customer.customerImage?.url ? (
-              <img
-                src={customer.customerImage.url}
-                alt={customer.name}
-                className="h-14 w-14 rounded-xl object-cover border-2 border-border"
-              />
-            ) : (
-              <div className="h-14 w-14 rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20 flex items-center justify-center">
-                <User className="w-7 h-7 text-primary" />
+// Mobile Card View - Minimal Version
+const MobileCustomerCard = ({ customer }: { customer: Loan }) => (
+  <Card className="mb-4 hover:shadow-lg transition-shadow duration-300 border-border/60">
+    <CardContent className="p-4">
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-3">
+          {customer.customerImage?.url ? (
+            <img
+              src={customer.customerImage.url}
+              alt={customer.name}
+              className="h-12 w-12 rounded-xl object-cover border-2 border-border"
+            />
+          ) : (
+            <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20 flex items-center justify-center">
+              <User className="w-6 h-6 text-primary" />
+            </div>
+          )}
+          <div className="flex-1">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-semibold text-foreground">{customer.name}</h3>
+                <p className="text-sm text-muted-foreground">{customer.phone}</p>
               </div>
-            )}
-            <div>
-              <h3 className="font-semibold text-foreground">{customer.name}</h3>
-              <div className="flex items-center gap-2 mt-1">
-                <Phone className="w-3.5 h-3.5 text-muted-foreground" />
-                <span className="text-sm text-muted-foreground">
-                  {customer.phone}
-                </span>
-              </div>
-            </div>
-          </div>
-          <Badge
-            className={`flex items-center gap-1 px-3 py-1 border ${statusStyles[customer.status]}`}
-            variant="outline"
-          >
-            {getStatusIcon(customer.status)}
-            <span className="capitalize">{customer.status}</span>
-          </Badge>
-        </div>
-
-        <div className="grid grid-cols-2 gap-3 mb-4">
-          <div className="bg-muted/30 rounded-lg p-3">
-            <p className="text-xs text-muted-foreground mb-1">Loan Amount</p>
-            <div className="flex items-center">
-              <IndianRupee className="w-3.5 h-3.5 mr-1" />
-              <span className="font-bold text-lg">
-                {formatCurrency(customer.loanAmount)}
-              </span>
-            </div>
-          </div>
-          <div className="bg-muted/30 rounded-lg p-3">
-            <p className="text-xs text-muted-foreground mb-1">Monthly EMI</p>
-            <div className="flex items-center">
-              <IndianRupee className="w-3.5 h-3.5 mr-1" />
-              <span className="font-bold text-lg">
-                {formatCurrency(customer.monthlyInstallment)}
-              </span>
+              <Badge
+                className={`flex items-center gap-1 px-2 py-1 text-xs ${statusStyles[customer.status]}`}
+                variant="outline"
+              >
+                {getStatusIcon(customer.status)}
+                <span className="capitalize">{customer.status.charAt(0)}</span>
+              </Badge>
             </div>
           </div>
         </div>
+      </div>
 
-        <div className="flex items-center justify-between text-sm text-muted-foreground mb-4">
-          <div className="flex items-center gap-1">
-            <Calendar className="w-4 h-4" />
-            <span>Joined: {formatDate(customer.joinDate)}</span>
+      {/* Loan Amount और Term */}
+      <div className="flex items-center justify-between mb-3">
+        <div>
+          <p className="text-xs text-muted-foreground mb-1">Loan Amount</p>
+          <div className="flex items-center">
+            <IndianRupee className="w-4 h-4 mr-1" />
+            <span className="font-bold text-base">
+              {formatCurrency(customer.loanAmount)}
+            </span>
           </div>
-          <Badge variant="secondary" className="text-xs">
-            {customer.interestRate}% Interest
-          </Badge>
         </div>
+        <div className="text-right">
+          <p className="text-xs text-muted-foreground">Term</p>
+          <p className="text-sm font-medium">{getTermDuration(customer)}</p>
+        </div>
+      </div>
 
+      {/* Date और Action Buttons */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+          <Calendar className="w-3.5 h-3.5" />
+          <span>{formatDate(customer.joinDate)}</span>
+        </div>
         <div className="flex gap-2">
           <Button
-            variant="outline"
-            size="sm"
-            className="flex-1"
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
             onClick={() => navigate(`/customers/${customer._id}`)}
           >
-            <Eye className="w-4 h-4 mr-2" />
-            View
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="flex-1"
-            onClick={() => navigate(`/customer-form/${customer._id}`)}
-          >
-            <Edit className="w-4 h-4 mr-2" />
-            Edit
+            <Eye className="w-4 h-4" />
           </Button>
           <Button
             variant="ghost"
             size="icon"
-            className="flex-shrink-0"
-            onClick={() => navigate(`/customers/${customer._id}`)}
+            className="h-8 w-8"
+            onClick={() => navigate(`/customer-form/${customer._id}`)}
           >
-            <ChevronRight className="w-4 h-4" />
+            <Edit className="w-4 h-4" />
           </Button>
         </div>
-      </CardContent>
-    </Card>
-  );
+      </div>
+    </CardContent>
+  </Card>
+);
 
   return (
     <DashboardLayout>
