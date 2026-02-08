@@ -81,6 +81,43 @@ export default function CustomerDetails() {
   const [deleting, setDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
+  // Direct Interest Calculation Function
+  const calculateDirectInterest = (customer: any) => {
+    if (!customer) return null;
+    
+    const principal = customer.loanAmount;
+    const rate = customer.interestRate;
+
+    // Calculate total months
+    let totalMonths = 0;
+    if (customer.term === "months") {
+      totalMonths = customer.months || 0;
+    } else {
+      totalMonths = (customer.years || 0) * 12;
+    }
+
+    // Direct Interest Calculation Formula:
+    // Monthly Interest = (Principal × Rate) / 100
+    const monthlyInterest = (principal * rate) / 100;
+
+    // Total Interest = Monthly Interest × Total Months
+    const totalInterest = monthlyInterest * totalMonths;
+
+    // Total Payable = Principal + Total Interest
+    const totalPayable = principal + totalInterest;
+
+    // Monthly Installment = Total Payable / Total Months
+    const monthlyInstallment = totalMonths > 0 ? totalPayable / totalMonths : 0;
+
+    return {
+      totalPayable,
+      monthlyInstallment,
+      totalInterest,
+      totalMonths,
+      monthlyInterest,
+    };
+  };
+
   useEffect(() => {
     if (id) {
       fetchCustomer();
@@ -244,13 +281,14 @@ export default function CustomerDetails() {
   }
 
   const status = getStatusConfig();
+  const calc = calculateDirectInterest(customer);
 
   return (
     <DashboardLayout>
       <div className="w-full px-4 py-6">
         <div className="max-w-6xl mx-auto">
-          {/* Back Button at Top */}
-         
+          {/* Back Button */}
+           
 
           {/* Customer Profile Header */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
@@ -281,7 +319,9 @@ export default function CustomerDetails() {
                   {customer.idNumber && (
                     <>
                       <div className="w-1 h-1 rounded-full bg-gray-300" />
-                       
+                      <Badge variant="outline" className="text-xs">
+                        {customer.idType}
+                      </Badge>
                     </>
                   )}
                 </div>
@@ -289,9 +329,22 @@ export default function CustomerDetails() {
             </div>
 
             <div className="flex items-center gap-3">
-             
-              
-               
+              <Button
+                variant="outline"
+                onClick={() => navigate(`/customer-form/${id}`, { state: { customer } })}
+                className="gap-2"
+              >
+                <Edit className="w-4 h-4" />
+                Edit
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={() => setShowDeleteConfirm(true)}
+                className="gap-2"
+              >
+                <Trash2 className="w-4 h-4" />
+                Delete
+              </Button>
             </div>
           </div>
 
@@ -319,6 +372,7 @@ export default function CustomerDetails() {
                   <div>
                     <p className="text-sm text-gray-600 mb-1">Interest Rate</p>
                     <p className="text-xl font-bold text-gray-900">{customer.interestRate}%</p>
+                    <p className="text-xs text-gray-500 mt-1">Direct Interest</p>
                   </div>
                   <div className="p-2 rounded-lg bg-green-50">
                     <Percent className="w-5 h-5 text-green-600" />
@@ -333,7 +387,10 @@ export default function CustomerDetails() {
                   <div>
                     <p className="text-sm text-gray-600 mb-1">Monthly EMI</p>
                     <p className="text-xl font-bold text-gray-900">
-                      {formatCurrency(customer.monthlyInstallment)}
+                      {formatCurrency(calc?.monthlyInstallment || 0)}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      {formatCurrency(calc?.monthlyInterest || 0)} monthly interest
                     </p>
                   </div>
                   <div className="p-2 rounded-lg bg-purple-50">
@@ -408,7 +465,7 @@ export default function CustomerDetails() {
             <div className="lg:col-span-2 space-y-6">
               {/* Customer Information Card */}
               <Card>
-                <CardHeader>
+                <CardHeader className="flex flex-row items-center justify-between">
                   <CardTitle className="text-lg flex items-center gap-2">
                     <User className="w-5 h-5 text-gray-600" />
                     Customer Information
@@ -447,7 +504,6 @@ export default function CustomerDetails() {
                             <p className="font-medium">{customer.address || "Not provided"}</p>
                           </div>
                         </div>
-                        
                       </div>
                     </div>
 
@@ -487,7 +543,7 @@ export default function CustomerDetails() {
 
               {/* Loan Details Card */}
               <Card>
-                <CardHeader>
+                <CardHeader className="flex flex-row items-center justify-between">
                   <CardTitle className="text-lg flex items-center gap-2">
                     <CreditCard className="w-5 h-5 text-gray-600" />
                     Loan Details
@@ -520,6 +576,12 @@ export default function CustomerDetails() {
                               }
                             </span>
                           </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm text-gray-600">Monthly Interest</span>
+                            <span className="font-semibold text-blue-600">
+                              {formatCurrency(calc?.monthlyInterest || 0)}
+                            </span>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -528,9 +590,9 @@ export default function CustomerDetails() {
                       <div className="p-4 rounded-lg border border-green-200 bg-green-50">
                         <div className="flex items-center justify-between mb-4">
                           <div>
-                            <p className="text-sm text-green-700 font-medium">Total Repayment</p>
+                            <p className="text-sm text-green-700 font-medium">Total Payable (Direct Interest)</p>
                             <p className="text-2xl font-bold text-green-900">
-                              {formatCurrency(customer.totalPayable)}
+                              {formatCurrency(calc?.totalPayable || 0)}
                             </p>
                           </div>
                           <TrendingUp className="w-8 h-8 text-green-600" />
@@ -542,9 +604,15 @@ export default function CustomerDetails() {
                             <span className="font-medium">{formatCurrency(customer.loanAmount)}</span>
                           </div>
                           <div className="flex justify-between text-sm">
-                            <span className="text-green-700">Interest Amount</span>
+                            <span className="text-green-700">Total Interest</span>
                             <span className="font-medium">
-                              {formatCurrency(customer.totalPayable - customer.loanAmount)}
+                              {formatCurrency(calc?.totalInterest || 0)}
+                            </span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-green-700">Monthly EMI</span>
+                            <span className="font-medium">
+                              {formatCurrency(calc?.monthlyInstallment || 0)}
                             </span>
                           </div>
                         </div>
@@ -554,13 +622,13 @@ export default function CustomerDetails() {
                         <div className="p-3 rounded-lg border border-blue-200 bg-blue-50">
                           <p className="text-xs text-blue-700 font-medium mb-1">Monthly EMI</p>
                           <p className="text-lg font-bold text-blue-900">
-                            {formatCurrency(customer.monthlyInstallment)}
+                            {formatCurrency(calc?.monthlyInstallment || 0)}
                           </p>
                         </div>
                         <div className="p-3 rounded-lg border border-purple-200 bg-purple-50">
-                          <p className="text-xs text-purple-700 font-medium mb-1">Interest Amount</p>
+                          <p className="text-xs text-purple-700 font-medium mb-1">Total Interest</p>
                           <p className="text-lg font-bold text-purple-900">
-                            {formatCurrency(customer.totalPayable - customer.loanAmount)}
+                            {formatCurrency(calc?.totalInterest || 0)}
                           </p>
                         </div>
                       </div>
@@ -601,6 +669,16 @@ export default function CustomerDetails() {
                         <p className="text-xs text-gray-500">{formatDate(customer.updatedAt)}</p>
                       </div>
                     </div>
+                    
+                    <div className="flex items-start gap-3">
+                      <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0">
+                        <Calendar className="w-4 h-4 text-gray-600" />
+                      </div>
+                      <div>
+                        <p className="font-medium text-sm text-gray-900">Loan Start Date</p>
+                        <p className="text-xs text-gray-500">{formatDate(customer.joinDate)}</p>
+                      </div>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -626,7 +704,7 @@ export default function CustomerDetails() {
                         variant="outline" 
                         size="sm" 
                         className="mt-2"
-                        onClick={() => navigate(`/customer-form/${id}`)}
+                        onClick={() => navigate(`/customer-form/${id}`, { state: { customer } })}
                       >
                         <Edit className="w-3 h-3 mr-2" />
                         Add Notes
@@ -636,29 +714,57 @@ export default function CustomerDetails() {
                 </CardContent>
               </Card>
 
-              {/* Total Payable Card */}
+              {/* Interest Calculation Card */}
               <Card>
                 <CardHeader>
                   <CardTitle className="text-lg flex items-center gap-2">
-                    <DollarSign className="w-5 h-5 text-gray-600" />
-                    Total Payable
+                    <Percent className="w-5 h-5 text-gray-600" />
+                    Interest Calculation
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-center">
-                    <p className="text-3xl font-bold text-gray-900 mb-2">
-                      {formatCurrency(customer.totalPayable)}
-                    </p>
-                    <p className="text-sm text-gray-600">
-                      Loan: {formatCurrency(customer.loanAmount)} + Interest: {formatCurrency(customer.totalPayable - customer.loanAmount)}
-                    </p>
-                    <Progress 
-                      value={(customer.loanAmount / customer.totalPayable) * 100} 
-                      className="h-2 mt-4"
-                    />
-                    <div className="flex justify-between text-xs text-gray-500 mt-2">
-                      <span>Principal</span>
-                      <span>Total</span>
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600">Monthly Interest</span>
+                      <span className="font-semibold">
+                        = {formatCurrency(customer.loanAmount)} × {customer.interestRate}%
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600"></span>
+                      <span className="font-semibold text-blue-600">
+                        = {formatCurrency(calc?.monthlyInterest || 0)}
+                      </span>
+                    </div>
+                    
+                    <div className="border-t pt-3 mt-3">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-gray-600">Total Interest</span>
+                        <span className="font-semibold">
+                          = {formatCurrency(calc?.monthlyInterest || 0)} × {calc?.totalMonths || 0} months
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center mt-1">
+                        <span className="text-sm text-gray-600"></span>
+                        <span className="font-semibold text-green-600">
+                          = {formatCurrency(calc?.totalInterest || 0)}
+                        </span>
+                      </div>
+                    </div>
+                    
+                    <div className="border-t pt-3 mt-3">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-gray-600">Total Payable</span>
+                        <span className="font-semibold">
+                          = {formatCurrency(customer.loanAmount)} + {formatCurrency(calc?.totalInterest || 0)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center mt-1">
+                        <span className="text-sm text-gray-600"></span>
+                        <span className="font-semibold text-green-600 text-lg">
+                          = {formatCurrency(calc?.totalPayable || 0)}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </CardContent>
