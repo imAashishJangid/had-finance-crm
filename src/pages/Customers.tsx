@@ -679,7 +679,6 @@ export default function Customers() {
 
   return (
     <DashboardLayout>
-      {/* ✅ FIX: Main container को overflow-hidden और proper width दें */}
       <div className="w-full min-w-0">
         <div className="space-y-6 p-4 md:p-6 max-w-full overflow-x-hidden">
           {/* Mobile Filters Sheet */}
@@ -1041,262 +1040,254 @@ export default function Customers() {
               ))}
             </div>
           ) : (
-            // ✅ FIXED: Desktop Table View - Responsive with no horizontal scroll
+            // ✅ FIXED: Desktop Table View - Fully Responsive with NO horizontal scroll
             <Card className="overflow-hidden border-border/50 shadow-sm w-full">
               <div className="overflow-x-auto">
-                <div className="min-w-[1024px]"> {/* Minimum width for tablets */}
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="bg-muted/30 hover:bg-muted/30">
-                        <TableHead className="font-semibold w-[200px]">Customer</TableHead>
-                        <TableHead className="font-semibold w-[180px]">
-                          Contact & ID
-                        </TableHead>
-                        <TableHead className="font-semibold w-[180px]">
-                          Loan Details
-                        </TableHead>
-                        <TableHead className="font-semibold w-[180px]">Financials</TableHead>
-                        <TableHead className="font-semibold w-[120px]">Status</TableHead>
-                        <TableHead className="font-semibold w-[140px]">Date</TableHead>
-                        <TableHead className="font-semibold w-[100px] text-right">
-                          Actions
-                        </TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredCustomers.map((customer) => {
-                        const calc = calculateDirectInterest(customer);
-                        
-                        return (
-                          <TableRow
-                            key={customer._id}
-                            className="hover:bg-muted/10 border-border/50 group cursor-pointer transition-colors"
-                            onClick={() => navigate(`/customers/${customer._id}`)}
-                          >
-                            {/* Customer Info */}
-                            <TableCell className="w-[200px]">
-                              <div className="flex items-center gap-3">
-                                {customer.customerImage?.url ? (
-                                  <img
-                                    src={customer.customerImage.url}
-                                    alt={customer.name}
-                                    className="h-12 w-12 rounded-xl object-cover border-2 border-border group-hover:border-primary/50 transition-colors flex-shrink-0"
-                                  />
-                                ) : (
-                                  <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20 flex items-center justify-center group-hover:border-primary/50 transition-colors flex-shrink-0">
-                                    <User className="w-6 h-6 text-primary" />
-                                  </div>
-                                )}
-                                <div className="min-w-0 flex-1">
-                                  <p className="font-semibold text-foreground group-hover:text-primary transition-colors truncate">
-                                    {customer.name}
-                                  </p>
-                                  <p className="text-xs text-muted-foreground truncate">
-                                    ID: {customer._id.substring(-8)}
-                                  </p>
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/30 hover:bg-muted/30">
+                      <TableHead className="font-semibold whitespace-nowrap">Customer</TableHead>
+                      <TableHead className="font-semibold whitespace-nowrap">Contact & ID</TableHead>
+                      <TableHead className="font-semibold whitespace-nowrap">Loan Details</TableHead>
+                      <TableHead className="font-semibold whitespace-nowrap">Financials</TableHead>
+                      <TableHead className="font-semibold whitespace-nowrap">Status</TableHead>
+                      <TableHead className="font-semibold whitespace-nowrap">Date</TableHead>
+                      <TableHead className="font-semibold whitespace-nowrap text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredCustomers.map((customer) => {
+                      const calc = calculateDirectInterest(customer);
+                      
+                      return (
+                        <TableRow
+                          key={customer._id}
+                          className="hover:bg-muted/10 border-border/50 group cursor-pointer transition-colors"
+                          onClick={() => navigate(`/customers/${customer._id}`)}
+                        >
+                          {/* Customer Info */}
+                          <TableCell className="whitespace-nowrap">
+                            <div className="flex items-center gap-3">
+                              {customer.customerImage?.url ? (
+                                <img
+                                  src={customer.customerImage.url}
+                                  alt={customer.name}
+                                  className="h-12 w-12 rounded-xl object-cover border-2 border-border group-hover:border-primary/50 transition-colors flex-shrink-0"
+                                />
+                              ) : (
+                                <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20 flex items-center justify-center group-hover:border-primary/50 transition-colors flex-shrink-0">
+                                  <User className="w-6 h-6 text-primary" />
                                 </div>
+                              )}
+                              <div>
+                                <p className="font-semibold text-foreground group-hover:text-primary transition-colors">
+                                  {customer.name}
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  ID: {customer._id.substring(-8)}
+                                </p>
                               </div>
-                            </TableCell>
+                            </div>
+                          </TableCell>
 
-                            {/* Contact & ID */}
-                            <TableCell className="w-[180px]">
-                              <div className="space-y-2">
-                                <div className="flex items-center gap-2 truncate">
-                                  <Phone className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                                  <span className="font-medium truncate">
-                                    {customer.phone}
-                                  </span>
-                                </div>
-                                <div className="flex items-center gap-2 truncate">
-                                  <Badge
-                                    className={`text-xs px-2 py-1 ${idTypeStyles[customer.idType]} flex-shrink-0`}
-                                    variant="outline"
-                                  >
-                                    {customer.idType}
-                                  </Badge>
-                                  <span className="text-xs text-muted-foreground truncate">
-                                    {customer.idNumber}
-                                  </span>
-                                </div>
-                              </div>
-                            </TableCell>
-
-                            {/* Loan Details - ✅ FIXED FORMAT */}
-                            <TableCell className="w-[180px]">
-                              <div className="space-y-2">
-                                <div className="flex items-center gap-2">
-                                  <IndianRupee className="w-4 h-4 text-green-600 flex-shrink-0" />
-                                  <span className="font-bold text-lg truncate">
-                                    {formatCurrency(customer.loanAmount)}
-                                  </span>
-                                </div>
-                                <div className="space-y-1">
-                                  <div className="text-sm">
-                                    <span className="font-medium">
-                                      {customer.interestRate}% Interest
-                                    </span>
-                                  </div>
-                                  <div className="text-xs text-muted-foreground">
-                                    {getTermDuration(customer)}
-                                  </div>
-                                  <div className="text-sm font-medium text-blue-600">
-                                    {formatCurrency(calc.monthlyInterest)}/month
-                                  </div>
-                                </div>
-                              </div>
-                            </TableCell>
-
-                            {/* Financials - Direct Interest Method */}
-                            <TableCell className="w-[180px]">
-                              <div className="space-y-2">
-                                <div>
-                                  <p className="text-xs text-muted-foreground">
-                                    Total Payable
-                                  </p>
-                                  <div className="flex items-center gap-2">
-                                    <IndianRupee className="w-4 h-4 flex-shrink-0" />
-                                    <p className="font-semibold truncate">
-                                      {formatCurrency(calc.totalPayable)}
-                                    </p>
-                                  </div>
-                                </div>
-                                <div>
-                                  <p className="text-xs text-muted-foreground">
-                                    Monthly EMI
-                                  </p>
-                                  <div className="flex items-center gap-2">
-                                    <IndianRupee className="w-4 h-4 text-green-600 flex-shrink-0" />
-                                    <p className="font-semibold text-green-600 truncate">
-                                      {formatCurrency(calc.monthlyInstallment)}
-                                    </p>
-                                  </div>
-                                </div>
-                                <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                                  <span>Interest:</span>
-                                  <span className="font-medium truncate">
-                                    {formatCurrency(calc.totalInterest)}
-                                  </span>
-                                </div>
-                              </div>
-                            </TableCell>
-
-                            {/* Status */}
-                            <TableCell className="w-[120px]">
-                              <Badge
-                                className={`flex items-center gap-1.5 px-3 py-1.5 capitalize font-medium ${statusStyles[customer.status]} w-fit`}
-                                variant="outline"
-                              >
-                                {getStatusIcon(customer.status)}
-                                <span className="truncate">{customer.status}</span>
-                              </Badge>
-                            </TableCell>
-
-                            {/* Date */}
-                            <TableCell className="w-[140px]">
+                          {/* Contact & ID */}
+                          <TableCell className="whitespace-nowrap">
+                            <div className="space-y-2">
                               <div className="flex items-center gap-2">
-                                <Calendar className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                                <span className="font-medium truncate">
-                                  {formatDate(customer.joinDate)}
+                                <Phone className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                                <span className="font-medium">
+                                  {customer.phone}
                                 </span>
                               </div>
-                            </TableCell>
+                              <div className="flex items-center gap-2">
+                                <Badge
+                                  className={`text-xs px-2 py-1 ${idTypeStyles[customer.idType]} flex-shrink-0`}
+                                  variant="outline"
+                                >
+                                  {customer.idType}
+                                </Badge>
+                                <span className="text-xs text-muted-foreground">
+                                  {customer.idNumber}
+                                </span>
+                              </div>
+                            </div>
+                          </TableCell>
 
-                            {/* Actions */}
-                            <TableCell className="w-[100px] text-right">
-                              <div className="flex justify-end gap-2">
-                                <TooltipProvider>
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        className="h-9 w-9 hover:bg-primary/10 flex-shrink-0"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          navigate(`/customers/${customer._id}`);
-                                        }}
-                                      >
-                                        <Eye className="w-4 h-4" />
-                                      </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                      <p>View Details</p>
-                                    </TooltipContent>
-                                  </Tooltip>
-                                </TooltipProvider>
+                          {/* Loan Details */}
+                          <TableCell className="whitespace-nowrap">
+                            <div className="space-y-2">
+                              <div className="flex items-center gap-2">
+                                <IndianRupee className="w-4 h-4 text-green-600 flex-shrink-0" />
+                                <span className="font-bold text-lg">
+                                  {formatCurrency(customer.loanAmount)}
+                                </span>
+                              </div>
+                              <div className="space-y-1">
+                                <div className="text-sm">
+                                  <span className="font-medium">
+                                    {customer.interestRate}% Interest
+                                  </span>
+                                </div>
+                                <div className="text-xs text-muted-foreground">
+                                  {getTermDuration(customer)}
+                                </div>
+                                <div className="text-sm font-medium text-blue-600">
+                                  {formatCurrency(calc.monthlyInterest)}/month
+                                </div>
+                              </div>
+                            </div>
+                          </TableCell>
 
-                                <TooltipProvider>
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        className="h-9 w-9 hover:bg-primary/10 flex-shrink-0"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          navigate(`/customer-form/${customer._id}`);
-                                        }}
-                                      >
-                                        <Edit className="w-4 h-4" />
-                                      </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                      <p>Edit Customer</p>
-                                    </TooltipContent>
-                                  </Tooltip>
-                                </TooltipProvider>
+                          {/* Financials - Direct Interest Method */}
+                          <TableCell className="whitespace-nowrap">
+                            <div className="space-y-2">
+                              <div>
+                                <p className="text-xs text-muted-foreground">
+                                  Total Payable
+                                </p>
+                                <div className="flex items-center gap-2">
+                                  <IndianRupee className="w-4 h-4 flex-shrink-0" />
+                                  <p className="font-semibold">
+                                    {formatCurrency(calc.totalPayable)}
+                                  </p>
+                                </div>
+                              </div>
+                              <div>
+                                <p className="text-xs text-muted-foreground">
+                                  Monthly EMI
+                                </p>
+                                <div className="flex items-center gap-2">
+                                  <IndianRupee className="w-4 h-4 text-green-600 flex-shrink-0" />
+                                  <p className="font-semibold text-green-600">
+                                    {formatCurrency(calc.monthlyInstallment)}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                <span>Interest:</span>
+                                <span className="font-medium">
+                                  {formatCurrency(calc.totalInterest)}
+                                </span>
+                              </div>
+                            </div>
+                          </TableCell>
 
-                                <DropdownMenu>
-                                  <DropdownMenuTrigger
-                                    asChild
-                                    onClick={(e) => e.stopPropagation()}
-                                  >
+                          {/* Status */}
+                          <TableCell className="whitespace-nowrap">
+                            <Badge
+                              className={`flex items-center gap-1.5 px-3 py-1.5 capitalize font-medium ${statusStyles[customer.status]} w-fit`}
+                              variant="outline"
+                            >
+                              {getStatusIcon(customer.status)}
+                              <span>{customer.status}</span>
+                            </Badge>
+                          </TableCell>
+
+                          {/* Date */}
+                          <TableCell className="whitespace-nowrap">
+                            <div className="flex items-center gap-2">
+                              <Calendar className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                              <span className="font-medium">
+                                {formatDate(customer.joinDate)}
+                              </span>
+                            </div>
+                          </TableCell>
+
+                          {/* Actions */}
+                          <TableCell className="whitespace-nowrap text-right">
+                            <div className="flex justify-end gap-2">
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
                                     <Button
                                       variant="ghost"
                                       size="icon"
                                       className="h-9 w-9 hover:bg-primary/10 flex-shrink-0"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        navigate(`/customers/${customer._id}`);
+                                      }}
                                     >
-                                      <MoreHorizontal className="w-4 h-4" />
+                                      <Eye className="w-4 h-4" />
                                     </Button>
-                                  </DropdownMenuTrigger>
-                                  <DropdownMenuContent align="end" className="w-48">
-                                    <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                    <DropdownMenuSeparator />
-                                    <DropdownMenuItem
-                                      onClick={() =>
-                                        navigate(`/customers/${customer._id}`)
-                                      }
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p>View Details</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-9 w-9 hover:bg-primary/10 flex-shrink-0"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        navigate(`/customer-form/${customer._id}`);
+                                      }}
                                     >
-                                      <Eye className="w-4 h-4 mr-2" />
-                                      View Details
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem
-                                      onClick={() =>
-                                        navigate(`/customer-form/${customer._id}`)
-                                      }
-                                    >
-                                      <Edit className="w-4 h-4 mr-2" />
-                                      Edit Profile
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem>
-                                      <CreditCard className="w-4 h-4 mr-2" />
-                                      Create Another Loan
-                                    </DropdownMenuItem>
-                                    <DropdownMenuSeparator />
-                                    <DropdownMenuItem className="text-red-600">
-                                      <XCircle className="w-4 h-4 mr-2" />
-                                      Mark as Defaulted
-                                    </DropdownMenuItem>
-                                  </DropdownMenuContent>
-                                </DropdownMenu>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
-                </div>
+                                      <Edit className="w-4 h-4" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p>Edit Customer</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+
+                              <DropdownMenu>
+                                <DropdownMenuTrigger
+                                  asChild
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-9 w-9 hover:bg-primary/10 flex-shrink-0"
+                                  >
+                                    <MoreHorizontal className="w-4 h-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="w-48">
+                                  <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem
+                                    onClick={() =>
+                                      navigate(`/customers/${customer._id}`)
+                                    }
+                                  >
+                                    <Eye className="w-4 h-4 mr-2" />
+                                    View Details
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    onClick={() =>
+                                      navigate(`/customer-form/${customer._id}`)
+                                    }
+                                  >
+                                    <Edit className="w-4 h-4 mr-2" />
+                                    Edit Profile
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem>
+                                    <CreditCard className="w-4 h-4 mr-2" />
+                                    Create Another Loan
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem className="text-red-600">
+                                    <XCircle className="w-4 h-4 mr-2" />
+                                    Mark as Defaulted
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
               </div>
 
               {/* Table Footer */}
