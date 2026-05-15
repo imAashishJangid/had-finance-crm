@@ -47,6 +47,8 @@ import {
   ArrowDownRight,
   Menu,
   X,
+  SlidersHorizontal,
+  XCircle as XCircleIcon,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -79,7 +81,17 @@ import {
   SheetTrigger,
   SheetTitle,
   SheetDescription,
+  SheetHeader,
+  SheetFooter,
+  SheetClose,
 } from "@/components/ui/sheet";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Separator } from "@/components/ui/separator";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 const statusStyles = {
   active:
@@ -140,13 +152,17 @@ export default function Customers() {
   const statusFilter = searchParams.get("status") || "all";
   const activeTab = searchParams.get("tab") || "all";
   const [showMobileFilters, setShowMobileFilters] = useState(false);
+  const [tempFilters, setTempFilters] = useState({
+    status: statusFilter,
+    tab: activeTab,
+  });
+  const [showSearchClear, setShowSearchClear] = useState(false);
 
   // Direct Interest Calculation Function
   const calculateDirectInterest = (customer: Loan) => {
     const principal = customer.loanAmount;
     const rate = customer.interestRate;
 
-    // Calculate total months
     let totalMonths = 0;
     if (customer.term === "months") {
       totalMonths = customer.months || 0;
@@ -154,17 +170,9 @@ export default function Customers() {
       totalMonths = (customer.years || 0) * 12;
     }
 
-    // Direct Interest Calculation Formula:
-    // Monthly Interest = (Principal × Rate) / 100
     const monthlyInterest = (principal * rate) / 100;
-
-    // Total Interest = Monthly Interest × Total Months
     const totalInterest = monthlyInterest * totalMonths;
-
-    // Total Payable = Principal + Total Interest
     const totalPayable = principal + totalInterest;
-
-    // Monthly Installment = Total Payable / Total Months
     const monthlyInstallment = totalMonths > 0 ? totalPayable / totalMonths : 0;
 
     return {
@@ -180,12 +188,30 @@ export default function Customers() {
     const params = new URLSearchParams(searchParams);
 
     if (value === "all" || value === "") {
-      params.delete(key); // clean URL
+      params.delete(key);
     } else {
       params.set(key, value);
     }
 
     setSearchParams(params);
+  };
+
+  const clearSearch = () => {
+    updateParams("search", "");
+    setShowSearchClear(false);
+  };
+
+  const applyMobileFilters = () => {
+    updateParams("status", tempFilters.status);
+    updateParams("tab", tempFilters.tab);
+    setShowMobileFilters(false);
+  };
+
+  const resetMobileFilters = () => {
+    setTempFilters({
+      status: "all",
+      tab: "all",
+    });
   };
 
   useEffect(() => {
@@ -201,7 +227,11 @@ export default function Customers() {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // ✅ Scroll position restore
+  useEffect(() => {
+    setShowSearchClear(searchQuery.length > 0);
+  }, [searchQuery]);
+
+  // Scroll position restore
   useEffect(() => {
     const savedScroll = sessionStorage.getItem("customersScroll");
 
@@ -232,27 +262,82 @@ export default function Customers() {
     }
   };
 
+  // Updated exportPDF function to respect filters and improve UI
   const exportPDF = () => {
-    const doc = new jsPDF();
-    doc.setFontSize(18);
-    doc.text("Customer & Loan Report", 14, 20);
+    // Use filtered customers instead of all customers
+    const dataToExport = filteredCustomers;
+    
+    if (dataToExport.length === 0) {
+      alert("No data to export based on current filters");
+      return;
+    }
 
+    const doc = new jsPDF({
+      orientation: 'landscape', // Better for tables with many columns
+      unit: 'mm',
+      format: 'a4'
+    });
+
+    // Add company header
+    doc.setFillColor(22, 160, 133);
+    doc.rect(0, 0, doc.internal.pageSize.width, 20, 'F');
+    
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(16);
+    doc.setFont("helvetica", "bold");
+    doc.text("Loan Management System", 14, 13);
+    
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");
+    doc.text(`Generated: ${new Date().toLocaleString('en-IN')}`, doc.internal.pageSize.width - 50, 13);
+    
+    // Reset text color for main content
+    doc.setTextColor(0, 0, 0);
+    
+    // Title with filter context
+    doc.setFontSize(18);
+    doc.setFont("helvetica", "bold");
+    doc.text("Customer & Loan Report", 14, 30);
+    
+    // Add filter information
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "italic");
+    let filterText = "Filters Applied: ";
+    if (statusFilter !== "all") filterText += `Status = ${statusFilter} `;
+    if (activeTab !== "all") filterText += `| View = ${activeTab} `;
+    if (searchQuery) filterText += `| Search = "${searchQuery}" `;
+    if (filterText === "Filters Applied: ") filterText = "No filters applied - Showing all customers";
+    doc.text(filterText, 14, 37);
+    
+    // Add summary statistics
+    const totalLoanAmount = dataToExport.reduce((sum, c) => sum + c.loanAmount, 0);
+    const avgLoanAmount = totalLoanAmount / dataToExport.length;
+    
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "normal");
+    doc.text(`Total Records: ${dataToExport.length}`, 14, 44);
+    doc.text(`Total Portfolio: ${formatCurrency(totalLoanAmount)}`, 70, 44);
+    doc.text(`Average Loan: ${formatCurrency(avgLoanAmount)}`, 130, 44);
+    
+    // Table columns
     const tableColumn = [
+      "S.No",
       "Name",
       "Phone",
       "ID Type",
       "ID Number",
       "Loan Amount",
-      "Interest Rate",
+      "Interest",
       "Term",
       "Duration",
       "Status",
       "Monthly EMI",
       "Total Payable",
+      "Join Date",
     ];
 
     const tableRows: any[] = [];
-    customers.forEach((c) => {
+    dataToExport.forEach((c, index) => {
       const calc = calculateDirectInterest(c);
       const duration =
         c.term === "months"
@@ -262,29 +347,109 @@ export default function Customers() {
             : "-";
       
       tableRows.push([
+        index + 1,
         c.name,
         c.phone,
-        c.idType,
-        c.idNumber,
-        `₹${c.loanAmount.toLocaleString()}`,
+         c.idType,
+          c.idNumber,
+        `Rs. ${c.loanAmount.toLocaleString("en-IN")}`,
         `${c.interestRate}%`,
-        c.term,
+         c.term,
         duration,
         c.status,
-        `₹${calc.monthlyInstallment.toFixed(0)}`,
-        `₹${calc.totalPayable.toFixed(0)}`,
-      ]);
+        `Rs. ${Math.round(calc.monthlyInstallment).toLocaleString("en-IN")}`,
+        `Rs. ${Math.round(calc.totalPayable).toLocaleString("en-IN")}`,
+         formatDate(c.joinDate),
+       ]);
+
+
+      
     });
 
+    // Generate table with improved styling
     autoTable(doc, {
       head: [tableColumn],
       body: tableRows,
-      startY: 35,
-      styles: { fontSize: 8 },
-      headStyles: { fillColor: [22, 160, 133] },
+      startY: 48,
+      styles: { 
+        fontSize: 7,
+        cellPadding: 2,
+        lineColor: [220, 220, 220],
+        lineWidth: 0.1,
+      },
+      headStyles: { 
+        fillColor: [22, 160, 133],
+        textColor: [255, 255, 255],
+        fontSize: 7,
+        fontStyle: 'bold',
+        halign: 'center',
+      },
+      alternateRowStyles: {
+        fillColor: [245, 245, 245],
+      },
+      columnStyles: {
+        0: { cellWidth: 10, halign: 'center' }, // S.No
+        5: { halign: 'right' }, // Loan Amount
+        10: { halign: 'right' }, // Monthly EMI
+        11: { halign: 'right' }, // Total Payable
+      },
+      didDrawPage: (data) => {
+        // Add footer on each page
+        doc.setFontSize(8);
+        doc.setTextColor(100, 100, 100);
+        doc.text(
+          `Page ${doc.getCurrentPageInfo().pageNumber}`,
+          doc.internal.pageSize.width - 20,
+          doc.internal.pageSize.height - 10
+        );
+        doc.text(
+          "Confidential - For Internal Use Only",
+          14,
+          doc.internal.pageSize.height - 10
+        );
+      },
     });
 
-    doc.save("Customer_Loan_Report.pdf");
+    // Add summary page at the end
+    doc.addPage();
+    doc.setFontSize(16);
+    doc.setFont("helvetica", "bold");
+    doc.text("Summary Statistics", 14, 20);
+    
+    doc.setFontSize(11);
+    doc.setFont("helvetica", "normal");
+    
+    const summaryData = [
+      ["Total Customers", dataToExport.length.toString()],
+      ["Total Loan Portfolio", formatCurrency(totalLoanAmount)],
+      ["Average Loan Amount", formatCurrency(avgLoanAmount)],
+      ["Active Loans", dataToExport.filter(c => c.status === 'active').length.toString()],
+      ["Pending Loans", dataToExport.filter(c => c.status === 'pending').length.toString()],
+      ["Closed Loans", dataToExport.filter(c => c.status === 'closed').length.toString()],
+      ["Defaulted Loans", dataToExport.filter(c => c.status === 'defaulted').length.toString()],
+    ];
+    
+    autoTable(doc, {
+      body: summaryData,
+      startY: 30,
+      styles: { 
+        fontSize: 10,
+        cellPadding: 5,
+      },
+      columnStyles: {
+        0: { fontStyle: 'bold', cellWidth: 80 },
+        1: { halign: 'right', cellWidth: 60 },
+      },
+      theme: 'plain',
+    });
+
+    // Generate filename with filter context
+    let filename = "Loan_Report";
+    if (statusFilter !== "all") filename += `_${statusFilter}`;
+    if (activeTab !== "all") filename += `_${activeTab}`;
+    filename += `_${new Date().toISOString().split('T')[0]}.pdf`;
+    
+    doc.save(filename);
   };
 
   const filteredCustomers = customers.filter((customer) => {
@@ -315,7 +480,7 @@ export default function Customers() {
       currency: "INR",
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
-    }).format(amount);
+    }).format(amount).replace('₹', '₹ '); // Add space after rupee symbol
   };
 
   // Statistics Calculations
@@ -367,32 +532,173 @@ export default function Customers() {
     return "N/A";
   };
 
-  // Mobile Filters Sheet Component
+  const getActiveFilterCount = () => {
+    let count = 0;
+    if (statusFilter !== "all") count++;
+    if (activeTab !== "all") count++;
+    if (searchQuery) count++;
+    return count;
+  };
+
+  // Mobile Filters Sheet Component - Enhanced
   const MobileFiltersSheet = () => (
     <Sheet open={showMobileFilters} onOpenChange={setShowMobileFilters}>
-      <SheetContent side="right" className="w-[300px] sm:w-[350px]">
-        <SheetTitle>Filters</SheetTitle>
-        <SheetDescription>
-          Filter customers by status and other criteria
-        </SheetDescription>
+      <SheetContent side="bottom" className="h-[90vh] rounded-t-2xl">
+        <SheetHeader className="text-left">
+          <SheetTitle className="flex items-center gap-2 text-xl">
+            <SlidersHorizontal className="w-5 h-5" />
+            Filters
+          </SheetTitle>
+          <SheetDescription>
+            Apply filters to narrow down customers
+          </SheetDescription>
+        </SheetHeader>
 
-        <div className="mt-6 space-y-6">
-          {/* Search Input in Mobile Sheet */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Search</label>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                placeholder="Search customers..."
-                className="pl-9"
-                value={searchQuery}
-                onChange={(e) => updateParams("search", e.target.value)}
-              />
+        <ScrollArea className="h-[calc(90vh-120px)] pr-4">
+          <div className="space-y-6 py-4">
+            {/* Status Filter */}
+            <div className="space-y-3">
+              <label className="text-sm font-medium flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-primary" />
+                Status
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                {["all", "active", "pending", "closed", "defaulted"].map(
+                  (status) => (
+                    <Button
+                      key={status}
+                      variant={tempFilters.status === status ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setTempFilters(prev => ({ ...prev, status }))}
+                      className={`capitalize justify-start ${tempFilters.status === status ? 'ring-2 ring-primary ring-offset-2' : ''}`}
+                    >
+                      <div
+                        className={`w-2 h-2 rounded-full mr-2 ${
+                          status === "active"
+                            ? "bg-green-500"
+                            : status === "pending"
+                              ? "bg-yellow-500"
+                              : status === "closed"
+                                ? "bg-blue-500"
+                                : status === "defaulted"
+                                  ? "bg-red-500"
+                                  : "bg-gray-500"
+                        }`}
+                      />
+                      {status === "all" ? "All Status" : status}
+                    </Button>
+                  ),
+                )}
+              </div>
             </div>
-          </div>
 
+            <Separator />
+
+            {/* Quick View Tabs */}
+            <div className="space-y-3">
+              <label className="text-sm font-medium flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-primary" />
+                Quick View
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { value: "all", label: "All Customers" },
+                  { value: "active", label: "Active Only" },
+                  { value: "pending", label: "Pending" },
+                  { value: "closed", label: "Closed" },
+                  { value: "defaulted", label: "Defaulted" },
+                ].map((tab) => (
+                  <Button
+                    key={tab.value}
+                    variant={tempFilters.tab === tab.value ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setTempFilters(prev => ({ ...prev, tab: tab.value }))}
+                    className={`justify-start ${tempFilters.tab === tab.value ? 'ring-2 ring-primary ring-offset-2' : ''}`}
+                  >
+                    {tab.label}
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            {/* Active Filters Summary */}
+            {(tempFilters.status !== "all" || tempFilters.tab !== "all") && (
+              <>
+                <Separator />
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Active Filters</label>
+                  <div className="flex flex-wrap gap-2">
+                    {tempFilters.status !== "all" && (
+                      <Badge variant="secondary" className="gap-1">
+                        Status: {tempFilters.status}
+                        <button
+                          onClick={() => setTempFilters(prev => ({ ...prev, status: "all" }))}
+                          className="ml-1 hover:text-destructive"
+                        >
+                          <XCircleIcon className="w-3 h-3" />
+                        </button>
+                      </Badge>
+                    )}
+                    {tempFilters.tab !== "all" && (
+                      <Badge variant="secondary" className="gap-1">
+                        View: {tempFilters.tab}
+                        <button
+                          onClick={() => setTempFilters(prev => ({ ...prev, tab: "all" }))}
+                          className="ml-1 hover:text-destructive"
+                        >
+                          <XCircleIcon className="w-3 h-3" />
+                        </button>
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        </ScrollArea>
+
+        <SheetFooter className="flex-row gap-2 pt-4 border-t">
+          <Button
+            variant="outline"
+            className="flex-1"
+            onClick={resetMobileFilters}
+          >
+            Reset All
+          </Button>
+          <Button className="flex-1" onClick={applyMobileFilters}>
+            Apply Filters
+          </Button>
+        </SheetFooter>
+      </SheetContent>
+    </Sheet>
+  );
+
+  // Desktop Filter Popover
+  const DesktopFilterPopover = () => (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          size="icon"
+          className={`h-11 w-11 relative ${getActiveFilterCount() > 0 ? 'border-primary' : ''}`}
+        >
+          <Filter className="w-4 h-4" />
+          {getActiveFilterCount() > 0 && (
+            <span className="absolute -top-1 -right-1 w-4 h-4 bg-primary text-[10px] text-primary-foreground rounded-full flex items-center justify-center">
+              {getActiveFilterCount()}
+            </span>
+          )}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-80 p-0" align="end">
+        <div className="p-4 border-b">
+          <h4 className="font-semibold">Filter Customers</h4>
+          <p className="text-xs text-muted-foreground">Apply filters to refine your list</p>
+        </div>
+        
+        <div className="p-4 space-y-4">
           {/* Status Filter */}
-          <div className="space-y-3">
+          <div className="space-y-2">
             <label className="text-sm font-medium">Status</label>
             <div className="grid grid-cols-2 gap-2">
               {["all", "active", "pending", "closed", "defaulted"].map(
@@ -424,57 +730,101 @@ export default function Customers() {
             </div>
           </div>
 
-          {/* Tabs Filter */}
-          <div className="space-y-3">
+          {/* Quick View */}
+          <div className="space-y-2">
             <label className="text-sm font-medium">Quick View</label>
-            <Tabs
-              value={activeTab}
-              onValueChange={(val) => updateParams("tab", val)}
-              className="w-full"
-            >
-              <TabsList className="grid grid-cols-2 h-auto">
-                <TabsTrigger value="all" className="text-xs py-2">
-                  All
-                </TabsTrigger>
-                <TabsTrigger value="active" className="text-xs py-2">
-                  Active
-                </TabsTrigger>
-                <TabsTrigger value="pending" className="text-xs py-2">
-                  Pending
-                </TabsTrigger>
-                <TabsTrigger value="closed" className="text-xs py-2">
-                  Closed
-                </TabsTrigger>
-                <TabsTrigger
-                  value="defaulted"
-                  className="text-xs py-2 col-span-2"
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                { value: "all", label: "All" },
+                { value: "active", label: "Active" },
+                { value: "pending", label: "Pending" },
+                { value: "closed", label: "Closed" },
+                { value: "defaulted", label: "Defaulted" },
+              ].map((tab) => (
+                <Button
+                  key={tab.value}
+                  variant={activeTab === tab.value ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => updateParams("tab", tab.value)}
                 >
-                  Defaulted
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
-          </div>
-
-          <div className="pt-4 border-t">
-            <Button
-              variant="outline"
-              className="w-full"
-              onClick={() => setSearchParams({})}
-            >
-              Clear All Filters
-            </Button>
+                  {tab.label}
+                </Button>
+              ))}
+            </div>
           </div>
         </div>
-      </SheetContent>
-    </Sheet>
+
+        <div className="p-4 border-t bg-muted/50 flex justify-between">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              updateParams("status", "all");
+              updateParams("tab", "all");
+              updateParams("search", "");
+            }}
+          >
+            Clear all
+          </Button>
+          <Badge variant="outline">
+            {getActiveFilterCount()} active filter{getActiveFilterCount() !== 1 ? 's' : ''}
+          </Badge>
+        </div>
+      </PopoverContent>
+    </Popover>
   );
+
+  // Responsive Search Component
+  const ResponsiveSearch = () => {
+    if (isMobile) {
+      return (
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input
+            placeholder="Search by name, phone, ID..."
+            className="pl-9 pr-10 h-11 text-sm w-full"
+            value={searchQuery}
+            onChange={(e) => updateParams("search", e.target.value)}
+          />
+          {showSearchClear && (
+            <button
+              onClick={clearSearch}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            >
+              <XCircleIcon className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+      );
+    }
+
+    return (
+      <div className="relative flex-1 max-w-md">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+        <Input
+          placeholder="Search customers by name, phone, ID number..."
+          className="pl-10 pr-10 h-11 text-base w-full"
+          value={searchQuery}
+          onChange={(e) => updateParams("search", e.target.value)}
+        />
+        {showSearchClear && (
+          <button
+            onClick={clearSearch}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+          >
+            <XCircleIcon className="w-4 h-4" />
+          </button>
+        )}
+      </div>
+    );
+  };
 
   // Responsive Tabs Component
   const ResponsiveTabs = () => {
     if (isMobile) {
       return (
-        <div className="w-full overflow-x-auto pb-2">
-          <div className="flex space-x-2 min-w-max">
+        <ScrollArea className="w-full pb-2">
+          <div className="flex space-x-2 min-w-max px-1">
             {["all", "active", "pending", "closed", "defaulted"].map((tab) => (
               <Button
                 key={tab}
@@ -500,7 +850,7 @@ export default function Customers() {
               </Button>
             ))}
           </div>
-        </div>
+        </ScrollArea>
       );
     }
 
@@ -595,7 +945,6 @@ export default function Customers() {
             </div>
           </div>
 
-          {/* Loan Amount और EMI */}
           <div className="grid grid-cols-2 gap-3 mb-3">
             <div>
               <p className="text-xs text-muted-foreground mb-1">Loan Amount</p>
@@ -617,31 +966,6 @@ export default function Customers() {
             </div>
           </div>
 
-          {/* Total Payable और Interest */}
-          <div className="grid grid-cols-2 gap-3 mb-3">
-            <div>
-              <p className="text-xs text-muted-foreground mb-1">
-                Total Payable
-              </p>
-              <div className="flex items-center">
-                <IndianRupee className="w-4 h-4 mr-1 text-blue-600" />
-                <span className="font-bold text-base text-blue-600">
-                  {formatCurrency(calc.totalPayable)}
-                </span>
-              </div>
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground mb-1">Interest</p>
-              <div className="flex items-center">
-                <IndianRupee className="w-4 h-4 mr-1 text-purple-600" />
-                <span className="font-bold text-base text-purple-600">
-                  {formatCurrency(calc.totalInterest)}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Term और Date */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1 text-xs text-muted-foreground">
               <Clock className="w-3.5 h-3.5" />
@@ -653,7 +977,6 @@ export default function Customers() {
             </div>
           </div>
 
-          {/* Action Buttons */}
           <div className="flex justify-end gap-2 mt-3 pt-3 border-t">
             <Button
               variant="ghost"
@@ -679,7 +1002,6 @@ export default function Customers() {
 
   return (
     <DashboardLayout>
-      {/* ✅ FIX: Main container को overflow-hidden और proper width दें */}
       <div className="w-full min-w-0">
         <div className="space-y-6 p-4 md:p-6 max-w-full overflow-x-hidden">
           {/* Mobile Filters Sheet */}
@@ -702,35 +1024,44 @@ export default function Customers() {
             </div>
 
             <div className="flex gap-3 flex-shrink-0">
-              <Button
-                variant="outline"
-                onClick={fetchCustomers}
-                size="sm"
-                className="gap-2"
-              >
-                <RefreshCw className="w-4 h-4" />
-                <span className="hidden sm:inline">Refresh</span>
-              </Button>
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button
                       variant="outline"
-                      size="sm"
-                      onClick={exportPDF}
-                      className="gap-2"
+                      onClick={fetchCustomers}
+                      size="icon"
+                      className="h-11 w-11"
                     >
-                      <Download className="w-4 h-4" />
-                      <span className="hidden sm:inline">Export</span>
+                      <RefreshCw className="w-4 h-4" />
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>
-                    <p>Download PDF report</p>
+                    <p>Refresh data</p>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
+
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={exportPDF}
+                      className="h-11 w-11"
+                    >
+                      <Download className="w-4 h-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Download filtered report</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+
               <Link to="/customer-form">
-                <Button className="gap-2 bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary whitespace-nowrap">
+                <Button className="gap-2 h-11">
                   <Plus className="w-4 h-4" />
                   <span className="hidden sm:inline">Add Customer</span>
                   <span className="sm:hidden">Add</span>
@@ -739,7 +1070,7 @@ export default function Customers() {
             </div>
           </div>
 
-          {/* Statistics Cards - Responsive Grid */}
+          {/* Statistics Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
             {loading ? (
               [...Array(5)].map((_, i) => <StatCardSkeleton key={i} />)
@@ -870,103 +1201,97 @@ export default function Customers() {
             )}
           </div>
 
-          {/* Search and Filters - Responsive */}
+          {/* Search and Filters Section - Now Separated */}
           <Card className="w-full">
             <CardContent className="p-4 sm:p-6">
               <div className="space-y-4">
-                {/* Desktop Layout */}
-                {!isMobile ? (
-                  <div className="flex flex-col lg:flex-row gap-4">
-                    <div className="flex-1 min-w-0">
-                      <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                        <Input
-                          placeholder="Search customers by name, phone, ID number..."
-                          className="pl-10 h-11 text-base w-full"
-                          value={searchQuery}
-                          onChange={(e) => updateParams("search", e.target.value)}
-                        />
-                      </div>
-                    </div>
+                {/* Search Bar - Always at top */}
+                <div className="flex gap-2">
+                  <ResponsiveSearch />
+                  
+                  {/* Filter Button - Separated from Search */}
+                  {isMobile ? (
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className={`h-11 w-11 flex-shrink-0 ${getActiveFilterCount() > 0 ? 'border-primary' : ''}`}
+                      onClick={() => setShowMobileFilters(true)}
+                    >
+                      <Filter className="w-4 h-4" />
+                      {getActiveFilterCount() > 0 && (
+                        <span className="absolute -top-1 -right-1 w-4 h-4 bg-primary text-[10px] text-primary-foreground rounded-full flex items-center justify-center">
+                          {getActiveFilterCount()}
+                        </span>
+                      )}
+                    </Button>
+                  ) : (
+                    <DesktopFilterPopover />
+                  )}
+                </div>
 
-                    <div className="flex gap-3 flex-shrink-0">
-                      <div className="min-w-0">
-                        <ResponsiveTabs />
-                      </div>
-
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="outline"
-                            size="icon"
-                            className="h-11 w-11"
-                          >
-                            <Filter className="w-4 h-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-56">
-                          <DropdownMenuLabel>Filter by Status</DropdownMenuLabel>
-                          <DropdownMenuSeparator />
-                          {[
-                            "all",
-                            "active",
-                            "pending",
-                            "closed",
-                            "defaulted",
-                          ].map((status) => (
-                            <DropdownMenuItem
-                              key={status}
-                              onClick={() => updateParams("status", status)}
-                              className="capitalize"
-                            >
-                              <div className="flex items-center gap-2">
-                                <div
-                                  className={`w-2 h-2 rounded-full ${
-                                    status === "active"
-                                      ? "bg-green-500"
-                                      : status === "pending"
-                                        ? "bg-yellow-500"
-                                        : status === "closed"
-                                          ? "bg-blue-500"
-                                          : status === "defaulted"
-                                            ? "bg-red-500"
-                                            : "bg-gray-500"
-                                  }`}
-                                />
-                                {status === "all" ? "All Status" : status}
-                              </div>
-                            </DropdownMenuItem>
-                          ))}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                  </div>
-                ) : (
-                  /* Mobile Layout */
-                  <div className="space-y-4">
-                    {/* Search Bar with Filter Button */}
-                    <div className="flex gap-2">
-                      <div className="relative flex-1 min-w-0">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                        <Input
-                          placeholder="Search customers..."
-                          className="pl-9 h-11 text-sm w-full"
-                          value={searchQuery}
-                          onChange={(e) => updateParams("search", e.target.value)}
-                        />
-                      </div>
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        className="h-11 w-11 flex-shrink-0"
-                        onClick={() => setShowMobileFilters(true)}
-                      >
-                        <Filter className="w-4 h-4" />
-                      </Button>
-                    </div>
-
-                    {/* Responsive Tabs for Mobile */}
+                {/* Tabs - Below Search on mobile, inline on desktop */}
+                <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                  <div className="flex-1 min-w-0">
                     <ResponsiveTabs />
+                  </div>
+                  
+                  {/* Quick Stats Badge - Optional */}
+                  {!isMobile && getActiveFilterCount() > 0 && (
+                    <Badge variant="secondary" className="flex-shrink-0">
+                      {getActiveFilterCount()} active filter{getActiveFilterCount() !== 1 ? 's' : ''}
+                    </Badge>
+                  )}
+                </div>
+
+                {/* Active Filters Display - Mobile */}
+                {isMobile && getActiveFilterCount() > 0 && (
+                  <div className="flex flex-wrap items-center gap-2 pt-2">
+                    <span className="text-xs text-muted-foreground">Active filters:</span>
+                    {statusFilter !== "all" && (
+                      <Badge variant="secondary" className="gap-1">
+                        Status: {statusFilter}
+                        <button
+                          onClick={() => updateParams("status", "all")}
+                          className="ml-1 hover:text-destructive"
+                        >
+                          <XCircleIcon className="w-3 h-3" />
+                        </button>
+                      </Badge>
+                    )}
+                    {activeTab !== "all" && (
+                      <Badge variant="secondary" className="gap-1">
+                        View: {activeTab}
+                        <button
+                          onClick={() => updateParams("tab", "all")}
+                          className="ml-1 hover:text-destructive"
+                        >
+                          <XCircleIcon className="w-3 h-3" />
+                        </button>
+                      </Badge>
+                    )}
+                    {searchQuery && (
+                      <Badge variant="secondary" className="gap-1">
+                        Search: "{searchQuery}"
+                        <button
+                          onClick={clearSearch}
+                          className="ml-1 hover:text-destructive"
+                        >
+                          <XCircleIcon className="w-3 h-3" />
+                        </button>
+                      </Badge>
+                    )}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 text-xs"
+                      onClick={() => {
+                        updateParams("status", "all");
+                        updateParams("tab", "all");
+                        updateParams("search", "");
+                      }}
+                    >
+                      Clear all
+                    </Button>
                   </div>
                 )}
               </div>
@@ -997,12 +1322,12 @@ export default function Customers() {
                 className="gap-2 text-sm flex-shrink-0"
               >
                 <Download className="w-4 h-4" />
-                Export All
+                Export Filtered ({filteredCustomers.length})
               </Button>
             )}
           </div>
 
-          {/* Content */}
+          {/* Content - Rest of your code remains same */}
           {loading ? (
             <Card>
               <CardContent className="p-6">
@@ -1034,17 +1359,15 @@ export default function Customers() {
               </CardContent>
             </Card>
           ) : isMobile ? (
-            // Mobile Card View
             <div className="space-y-4">
               {filteredCustomers.map((customer) => (
                 <MobileCustomerCard key={customer._id} customer={customer} />
               ))}
             </div>
           ) : (
-            // ✅ FIXED: Desktop Table View - Responsive with no horizontal scroll
             <Card className="overflow-hidden border-border/50 shadow-sm w-full">
               <div className="overflow-x-auto">
-                <div className="min-w-[1024px]"> {/* Minimum width for tablets */}
+                <div className="w-full">
                   <Table>
                     <TableHeader>
                       <TableRow className="bg-muted/30 hover:bg-muted/30">
@@ -1121,7 +1444,7 @@ export default function Customers() {
                               </div>
                             </TableCell>
 
-                            {/* Loan Details - ✅ FIXED FORMAT */}
+                            {/* Loan Details */}
                             <TableCell className="w-[180px]">
                               <div className="space-y-2">
                                 <div className="flex items-center gap-2">
@@ -1146,7 +1469,7 @@ export default function Customers() {
                               </div>
                             </TableCell>
 
-                            {/* Financials - Direct Interest Method */}
+                            {/* Financials */}
                             <TableCell className="w-[180px]">
                               <div className="space-y-2">
                                 <div>
