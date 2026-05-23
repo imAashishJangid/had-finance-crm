@@ -30,23 +30,16 @@ import {
   Calendar,
   CreditCard,
   IndianRupee,
-  ChevronRight,
   Plus,
   RefreshCw,
   TrendingUp,
-  TrendingDown,
   Users,
   Wallet,
   AlertCircle,
   CheckCircle,
   XCircle,
   Clock,
-  BarChart3,
   FileText,
-  ArrowUpRight,
-  ArrowDownRight,
-  Menu,
-  X,
   SlidersHorizontal,
   XCircle as XCircleIcon,
 } from "lucide-react";
@@ -61,13 +54,8 @@ import {
 import {
   Card,
   CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
   CardFooter,
 } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Progress } from "@/components/ui/progress";
 import {
   Tooltip,
   TooltipContent,
@@ -78,12 +66,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   Sheet,
   SheetContent,
-  SheetTrigger,
   SheetTitle,
   SheetDescription,
   SheetHeader,
   SheetFooter,
-  SheetClose,
 } from "@/components/ui/sheet";
 import {
   Popover,
@@ -141,6 +127,77 @@ interface Loan {
   };
 }
 
+// Helper: Get loan end date
+const getLoanEndDate = (customer: Loan): Date | null => {
+  if (!customer.joinDate) return null;
+  
+  const startDate = new Date(customer.joinDate);
+  
+  let totalMonths = 0;
+  if (customer.term === "months") {
+    totalMonths = customer.months || 0;
+  } else {
+    totalMonths = (customer.years || 0) * 12;
+  }
+  
+  if (totalMonths === 0) return null;
+  
+  const endDate = new Date(startDate);
+  endDate.setMonth(startDate.getMonth() + totalMonths);
+  
+  return endDate;
+};
+
+// Helper: Check if loan is upcoming (within last 30 days)
+const isUpcomingLoan = (customer: Loan): boolean => {
+  if (customer.status !== "active") return false;
+  
+  const endDate = getLoanEndDate(customer);
+  if (!endDate) return false;
+  
+  const currentDate = new Date();
+  const daysUntilEnd = Math.ceil((endDate.getTime() - currentDate.getTime()) / (1000 * 3600 * 24));
+  
+  return daysUntilEnd >= 0 && daysUntilEnd <= 30;
+};
+
+// Helper: Check if loan is overdue (end date has passed)
+const isOverdueLoan = (customer: Loan): boolean => {
+  if (customer.status !== "active") return false;
+  
+  const endDate = getLoanEndDate(customer);
+  if (!endDate) return false;
+  
+  const currentDate = new Date();
+  const today = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate());
+  const endDateOnly = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate());
+  
+  return endDateOnly < today;
+};
+
+// Helper: Get days overdue
+const getDaysOverdue = (customer: Loan): number | null => {
+  const endDate = getLoanEndDate(customer);
+  if (!endDate) return null;
+  
+  const currentDate = new Date();
+  const today = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate());
+  const endDateOnly = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate());
+  
+  if (endDateOnly >= today) return null;
+  
+  return Math.ceil((today.getTime() - endDateOnly.getTime()) / (1000 * 3600 * 24));
+};
+
+// Helper: Get days until loan ends
+const getDaysUntilEnd = (customer: Loan): number | null => {
+  const endDate = getLoanEndDate(customer);
+  if (!endDate) return null;
+  
+  const currentDate = new Date();
+  return Math.ceil((endDate.getTime() - currentDate.getTime()) / (1000 * 3600 * 24));
+};
+
 export default function Customers() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -150,13 +207,12 @@ export default function Customers() {
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [isTablet, setIsTablet] = useState(window.innerWidth < 1024);
   const statusFilter = searchParams.get("status") || "all";
-  const activeTab = searchParams.get("tab") || "all";
   const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [tempFilters, setTempFilters] = useState({
     status: statusFilter,
-    tab: activeTab,
   });
   const [showSearchClear, setShowSearchClear] = useState(false);
+  const [filterPopoverOpen, setFilterPopoverOpen] = useState(false);
 
   // Direct Interest Calculation Function
   const calculateDirectInterest = (customer: Loan) => {
@@ -194,6 +250,7 @@ export default function Customers() {
     }
 
     setSearchParams(params);
+    setFilterPopoverOpen(false);
   };
 
   const clearSearch = () => {
@@ -203,14 +260,12 @@ export default function Customers() {
 
   const applyMobileFilters = () => {
     updateParams("status", tempFilters.status);
-    updateParams("tab", tempFilters.tab);
     setShowMobileFilters(false);
   };
 
   const resetMobileFilters = () => {
     setTempFilters({
       status: "all",
-      tab: "all",
     });
   };
 
@@ -231,14 +286,11 @@ export default function Customers() {
     setShowSearchClear(searchQuery.length > 0);
   }, [searchQuery]);
 
-  // Scroll position restore
   useEffect(() => {
     const savedScroll = sessionStorage.getItem("customersScroll");
-
     if (savedScroll) {
       window.scrollTo(0, Number(savedScroll));
     }
-
     return () => {
       sessionStorage.setItem("customersScroll", String(window.scrollY));
     };
@@ -262,9 +314,7 @@ export default function Customers() {
     }
   };
 
-  // Updated exportPDF function to respect filters and improve UI
   const exportPDF = () => {
-    // Use filtered customers instead of all customers
     const dataToExport = filteredCustomers;
     
     if (dataToExport.length === 0) {
@@ -273,12 +323,11 @@ export default function Customers() {
     }
 
     const doc = new jsPDF({
-      orientation: 'landscape', // Better for tables with many columns
+      orientation: 'landscape',
       unit: 'mm',
       format: 'a4'
     });
 
-    // Add company header
     doc.setFillColor(22, 160, 133);
     doc.rect(0, 0, doc.internal.pageSize.width, 20, 'F');
     
@@ -291,25 +340,19 @@ export default function Customers() {
     doc.setFont("helvetica", "normal");
     doc.text(`Generated: ${new Date().toLocaleString('en-IN')}`, doc.internal.pageSize.width - 50, 13);
     
-    // Reset text color for main content
     doc.setTextColor(0, 0, 0);
-    
-    // Title with filter context
     doc.setFontSize(18);
     doc.setFont("helvetica", "bold");
     doc.text("Customer & Loan Report", 14, 30);
     
-    // Add filter information
     doc.setFontSize(10);
     doc.setFont("helvetica", "italic");
     let filterText = "Filters Applied: ";
     if (statusFilter !== "all") filterText += `Status = ${statusFilter} `;
-    if (activeTab !== "all") filterText += `| View = ${activeTab} `;
     if (searchQuery) filterText += `| Search = "${searchQuery}" `;
     if (filterText === "Filters Applied: ") filterText = "No filters applied - Showing all customers";
     doc.text(filterText, 14, 37);
     
-    // Add summary statistics
     const totalLoanAmount = dataToExport.reduce((sum, c) => sum + c.loanAmount, 0);
     const avgLoanAmount = totalLoanAmount / dataToExport.length;
     
@@ -319,98 +362,42 @@ export default function Customers() {
     doc.text(`Total Portfolio: ${formatCurrency(totalLoanAmount)}`, 70, 44);
     doc.text(`Average Loan: ${formatCurrency(avgLoanAmount)}`, 130, 44);
     
-    // Table columns
     const tableColumn = [
-      "S.No",
-      "Name",
-      "Phone",
-      "ID Type",
-      "ID Number",
-      "Loan Amount",
-      "Interest",
-      "Term",
-      "Duration",
-      "Status",
-      "Monthly EMI",
-      "Total Payable",
-      "Join Date",
+      "S.No", "Name", "Phone", "ID Type", "ID Number", "Loan Amount",
+      "Interest", "Term", "Duration", "Status", "Monthly EMI", "Total Payable", "Join Date",
     ];
 
     const tableRows: any[] = [];
     dataToExport.forEach((c, index) => {
       const calc = calculateDirectInterest(c);
-      const duration =
-        c.term === "months"
-          ? `${c.months} months`
-          : c.years
-            ? `${c.years} years`
-            : "-";
+      const duration = c.term === "months" ? `${c.months} months` : c.years ? `${c.years} years` : "-";
       
       tableRows.push([
-        index + 1,
-        c.name,
-        c.phone,
-         c.idType,
-          c.idNumber,
+        index + 1, c.name, c.phone, c.idType, c.idNumber,
         `Rs. ${c.loanAmount.toLocaleString("en-IN")}`,
-        `${c.interestRate}%`,
-         c.term,
-        duration,
-        c.status,
+        `${c.interestRate}%`, c.term, duration, c.status,
         `Rs. ${Math.round(calc.monthlyInstallment).toLocaleString("en-IN")}`,
         `Rs. ${Math.round(calc.totalPayable).toLocaleString("en-IN")}`,
-         formatDate(c.joinDate),
-       ]);
-
-
-      
+        formatDate(c.joinDate),
+      ]);
     });
 
-    // Generate table with improved styling
     autoTable(doc, {
       head: [tableColumn],
       body: tableRows,
       startY: 48,
-      styles: { 
-        fontSize: 7,
-        cellPadding: 2,
-        lineColor: [220, 220, 220],
-        lineWidth: 0.1,
-      },
-      headStyles: { 
-        fillColor: [22, 160, 133],
-        textColor: [255, 255, 255],
-        fontSize: 7,
-        fontStyle: 'bold',
-        halign: 'center',
-      },
-      alternateRowStyles: {
-        fillColor: [245, 245, 245],
-      },
-      columnStyles: {
-        0: { cellWidth: 10, halign: 'center' }, // S.No
-        5: { halign: 'right' }, // Loan Amount
-        10: { halign: 'right' }, // Monthly EMI
-        11: { halign: 'right' }, // Total Payable
-      },
+      styles: { fontSize: 7, cellPadding: 2, lineColor: [220, 220, 220], lineWidth: 0.1 },
+      headStyles: { fillColor: [22, 160, 133], textColor: [255, 255, 255], fontSize: 7, fontStyle: 'bold', halign: 'center' },
+      alternateRowStyles: { fillColor: [245, 245, 245] },
+      columnStyles: { 0: { cellWidth: 10, halign: 'center' }, 5: { halign: 'right' }, 10: { halign: 'right' }, 11: { halign: 'right' } },
       didDrawPage: (data) => {
-        // Add footer on each page
         doc.setFontSize(8);
         doc.setTextColor(100, 100, 100);
-        doc.text(
-          `Page ${doc.getCurrentPageInfo().pageNumber}`,
-          doc.internal.pageSize.width - 20,
-          doc.internal.pageSize.height - 10
-        );
-        doc.text(
-          "Confidential - For Internal Use Only",
-          14,
-          doc.internal.pageSize.height - 10
-        );
+        doc.text(`Page ${doc.getCurrentPageInfo().pageNumber}`, doc.internal.pageSize.width - 20, doc.internal.pageSize.height - 10);
+        doc.text("Confidential - For Internal Use Only", 14, doc.internal.pageSize.height - 10);
       },
     });
 
-    // Add summary page at the end
     doc.addPage();
     doc.setFontSize(16);
     doc.setFont("helvetica", "bold");
@@ -427,31 +414,26 @@ export default function Customers() {
       ["Pending Loans", dataToExport.filter(c => c.status === 'pending').length.toString()],
       ["Closed Loans", dataToExport.filter(c => c.status === 'closed').length.toString()],
       ["Defaulted Loans", dataToExport.filter(c => c.status === 'defaulted').length.toString()],
+      ["Upcoming Loans (Last Month)", dataToExport.filter(c => isUpcomingLoan(c)).length.toString()],
+      ["Overdue Loans", dataToExport.filter(c => isOverdueLoan(c)).length.toString()],
     ];
     
     autoTable(doc, {
       body: summaryData,
       startY: 30,
-      styles: { 
-        fontSize: 10,
-        cellPadding: 5,
-      },
-      columnStyles: {
-        0: { fontStyle: 'bold', cellWidth: 80 },
-        1: { halign: 'right', cellWidth: 60 },
-      },
+      styles: { fontSize: 10, cellPadding: 5 },
+      columnStyles: { 0: { fontStyle: 'bold', cellWidth: 80 }, 1: { halign: 'right', cellWidth: 60 } },
       theme: 'plain',
     });
 
-    // Generate filename with filter context
     let filename = "Loan_Report";
     if (statusFilter !== "all") filename += `_${statusFilter}`;
-    if (activeTab !== "all") filename += `_${activeTab}`;
     filename += `_${new Date().toISOString().split('T')[0]}.pdf`;
     
     doc.save(filename);
   };
 
+  // Filter customers
   const filteredCustomers = customers.filter((customer) => {
     const query = searchQuery.toLowerCase();
     const matchesSearch =
@@ -459,12 +441,40 @@ export default function Customers() {
       customer.phone?.includes(query) ||
       customer.idNumber?.toLowerCase().includes(query) ||
       customer._id?.toLowerCase().includes(query);
-    const matchesStatus =
-      statusFilter === "all" || customer.status === statusFilter;
-    const matchesTab = activeTab === "all" || customer.status === activeTab;
 
-    return matchesSearch && matchesStatus && matchesTab;
+    // Overdue filter
+    if (statusFilter === "overdue") {
+      return matchesSearch && isOverdueLoan(customer);
+    }
+    
+    // Upcoming filter
+    if (statusFilter === "upcoming") {
+      return matchesSearch && isUpcomingLoan(customer);
+    }
+    
+    // Other status filters
+    const matchesStatus = statusFilter === "all" || customer.status === statusFilter;
+    return matchesSearch && matchesStatus;
   });
+
+  // Sort customers
+  const sortedFilteredCustomers = (() => {
+    if (statusFilter === "upcoming") {
+      return [...filteredCustomers].sort((a, b) => {
+        const daysA = getDaysUntilEnd(a) ?? Infinity;
+        const daysB = getDaysUntilEnd(b) ?? Infinity;
+        return daysA - daysB;
+      });
+    }
+    if (statusFilter === "overdue") {
+      return [...filteredCustomers].sort((a, b) => {
+        const daysA = getDaysOverdue(a) ?? -1;
+        const daysB = getDaysOverdue(b) ?? -1;
+        return daysB - daysA;
+      });
+    }
+    return filteredCustomers;
+  })();
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("en-IN", {
@@ -480,7 +490,7 @@ export default function Customers() {
       currency: "INR",
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
-    }).format(amount).replace('₹', '₹ '); // Add space after rupee symbol
+    }).format(amount).replace('₹', '₹ ');
   };
 
   // Statistics Calculations
@@ -488,38 +498,23 @@ export default function Customers() {
   const closedCustomers = customers.filter((c) => c.status === "closed");
   const pendingCustomers = customers.filter((c) => c.status === "pending");
   const defaultedCustomers = customers.filter((c) => c.status === "defaulted");
+  const upcomingCustomers = customers.filter((c) => isUpcomingLoan(c));
+  const overdueCustomers = customers.filter((c) => isOverdueLoan(c));
   const totalCustomers = customers.length;
 
-  const activeAmount = activeCustomers.reduce(
-    (sum, c) => sum + c.loanAmount,
-    0,
-  );
-  const closedAmount = closedCustomers.reduce(
-    (sum, c) => sum + c.loanAmount,
-    0,
-  );
-  const pendingAmount = pendingCustomers.reduce(
-    (sum, c) => sum + c.loanAmount,
-    0,
-  );
-  const defaultedAmount = defaultedCustomers.reduce(
-    (sum, c) => sum + c.loanAmount,
-    0,
-  );
+  const activeAmount = activeCustomers.reduce((sum, c) => sum + c.loanAmount, 0);
+  const closedAmount = closedCustomers.reduce((sum, c) => sum + c.loanAmount, 0);
+  const pendingAmount = pendingCustomers.reduce((sum, c) => sum + c.loanAmount, 0);
+  const defaultedAmount = defaultedCustomers.reduce((sum, c) => sum + c.loanAmount, 0);
   const totalAmount = customers.reduce((sum, c) => sum + c.loanAmount, 0);
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case "active":
-        return <CheckCircle className="w-4 h-4" />;
-      case "closed":
-        return <CheckCircle className="w-4 h-4" />;
-      case "pending":
-        return <Clock className="w-4 h-4" />;
-      case "defaulted":
-        return <AlertCircle className="w-4 h-4" />;
-      default:
-        return null;
+      case "active": return <CheckCircle className="w-4 h-4" />;
+      case "closed": return <CheckCircle className="w-4 h-4" />;
+      case "pending": return <Clock className="w-4 h-4" />;
+      case "defaulted": return <AlertCircle className="w-4 h-4" />;
+      default: return null;
     }
   };
 
@@ -535,138 +530,57 @@ export default function Customers() {
   const getActiveFilterCount = () => {
     let count = 0;
     if (statusFilter !== "all") count++;
-    if (activeTab !== "all") count++;
     if (searchQuery) count++;
     return count;
   };
 
-  // Mobile Filters Sheet Component - Enhanced
+  // Mobile Filters Sheet
   const MobileFiltersSheet = () => (
     <Sheet open={showMobileFilters} onOpenChange={setShowMobileFilters}>
-      <SheetContent side="bottom" className="h-[90vh] rounded-t-2xl">
+      <SheetContent side="bottom" className="h-[80vh] rounded-t-2xl">
         <SheetHeader className="text-left">
           <SheetTitle className="flex items-center gap-2 text-xl">
             <SlidersHorizontal className="w-5 h-5" />
-            Filters
+            Filter by Status
           </SheetTitle>
           <SheetDescription>
-            Apply filters to narrow down customers
+            Select a status to filter customers
           </SheetDescription>
         </SheetHeader>
 
-        <ScrollArea className="h-[calc(90vh-120px)] pr-4">
-          <div className="space-y-6 py-4">
-            {/* Status Filter */}
-            <div className="space-y-3">
-              <label className="text-sm font-medium flex items-center gap-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-primary" />
-                Status
-              </label>
-              <div className="grid grid-cols-2 gap-2">
-                {["all", "active", "pending", "closed", "defaulted"].map(
-                  (status) => (
-                    <Button
-                      key={status}
-                      variant={tempFilters.status === status ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setTempFilters(prev => ({ ...prev, status }))}
-                      className={`capitalize justify-start ${tempFilters.status === status ? 'ring-2 ring-primary ring-offset-2' : ''}`}
-                    >
-                      <div
-                        className={`w-2 h-2 rounded-full mr-2 ${
-                          status === "active"
-                            ? "bg-green-500"
-                            : status === "pending"
-                              ? "bg-yellow-500"
-                              : status === "closed"
-                                ? "bg-blue-500"
-                                : status === "defaulted"
-                                  ? "bg-red-500"
-                                  : "bg-gray-500"
-                        }`}
-                      />
-                      {status === "all" ? "All Status" : status}
-                    </Button>
-                  ),
-                )}
-              </div>
-            </div>
-
-            <Separator />
-
-            {/* Quick View Tabs */}
-            <div className="space-y-3">
-              <label className="text-sm font-medium flex items-center gap-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-primary" />
-                Quick View
-              </label>
-              <div className="grid grid-cols-2 gap-2">
-                {[
-                  { value: "all", label: "All Customers" },
-                  { value: "active", label: "Active Only" },
-                  { value: "pending", label: "Pending" },
-                  { value: "closed", label: "Closed" },
-                  { value: "defaulted", label: "Defaulted" },
-                ].map((tab) => (
-                  <Button
-                    key={tab.value}
-                    variant={tempFilters.tab === tab.value ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setTempFilters(prev => ({ ...prev, tab: tab.value }))}
-                    className={`justify-start ${tempFilters.tab === tab.value ? 'ring-2 ring-primary ring-offset-2' : ''}`}
-                  >
-                    {tab.label}
-                  </Button>
-                ))}
-              </div>
-            </div>
-
-            {/* Active Filters Summary */}
-            {(tempFilters.status !== "all" || tempFilters.tab !== "all") && (
-              <>
-                <Separator />
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Active Filters</label>
-                  <div className="flex flex-wrap gap-2">
-                    {tempFilters.status !== "all" && (
-                      <Badge variant="secondary" className="gap-1">
-                        Status: {tempFilters.status}
-                        <button
-                          onClick={() => setTempFilters(prev => ({ ...prev, status: "all" }))}
-                          className="ml-1 hover:text-destructive"
-                        >
-                          <XCircleIcon className="w-3 h-3" />
-                        </button>
-                      </Badge>
-                    )}
-                    {tempFilters.tab !== "all" && (
-                      <Badge variant="secondary" className="gap-1">
-                        View: {tempFilters.tab}
-                        <button
-                          onClick={() => setTempFilters(prev => ({ ...prev, tab: "all" }))}
-                          className="ml-1 hover:text-destructive"
-                        >
-                          <XCircleIcon className="w-3 h-3" />
-                        </button>
-                      </Badge>
-                    )}
-                  </div>
+        <ScrollArea className="h-[calc(80vh-120px)] pr-4">
+          <div className="space-y-2 py-4">
+            {[
+              { value: "all", label: "All Customers", color: "bg-gray-500", count: totalCustomers },
+              { value: "active", label: "Active", color: "bg-green-500", count: activeCustomers.length },
+              { value: "pending", label: "Pending", color: "bg-yellow-500", count: pendingCustomers.length },
+              { value: "closed", label: "Closed", color: "bg-blue-500", count: closedCustomers.length },
+              { value: "defaulted", label: "Defaulted", color: "bg-red-500", count: defaultedCustomers.length },
+              { value: "upcoming", label: "Upcoming (Last Month)", color: "bg-purple-500", count: upcomingCustomers.length },
+              { value: "overdue", label: "Overdue", color: "bg-orange-500", count: overdueCustomers.length },
+            ].map((status) => (
+              <Button
+                key={status.value}
+                variant={tempFilters.status === status.value ? "default" : "outline"}
+                onClick={() => setTempFilters(prev => ({ ...prev, status: status.value }))}
+                className="w-full justify-between h-12"
+              >
+                <div className="flex items-center gap-3">
+                  <div className={`w-3 h-3 rounded-full ${status.color}`} />
+                  <span>{status.label}</span>
                 </div>
-              </>
-            )}
+                <Badge variant="secondary">{status.count}</Badge>
+              </Button>
+            ))}
           </div>
         </ScrollArea>
 
         <SheetFooter className="flex-row gap-2 pt-4 border-t">
-          <Button
-            variant="outline"
-            className="flex-1"
-            onClick={resetMobileFilters}
-          >
-            Reset All
+          <Button variant="outline" className="flex-1" onClick={resetMobileFilters}>
+            Reset
           </Button>
           <Button className="flex-1" onClick={applyMobileFilters}>
-            Apply Filters
+            Apply Filter
           </Button>
         </SheetFooter>
       </SheetContent>
@@ -675,7 +589,7 @@ export default function Customers() {
 
   // Desktop Filter Popover
   const DesktopFilterPopover = () => (
-    <Popover>
+    <Popover open={filterPopoverOpen} onOpenChange={setFilterPopoverOpen}>
       <PopoverTrigger asChild>
         <Button
           variant="outline"
@@ -690,86 +604,52 @@ export default function Customers() {
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-80 p-0" align="end">
+      <PopoverContent className="w-72 p-0" align="end">
         <div className="p-4 border-b">
-          <h4 className="font-semibold">Filter Customers</h4>
-          <p className="text-xs text-muted-foreground">Apply filters to refine your list</p>
+          <h4 className="font-semibold">Filter by Status</h4>
+          <p className="text-xs text-muted-foreground">Select status to filter customers</p>
         </div>
         
-        <div className="p-4 space-y-4">
-          {/* Status Filter */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Status</label>
-            <div className="grid grid-cols-2 gap-2">
-              {["all", "active", "pending", "closed", "defaulted"].map(
-                (status) => (
-                  <Button
-                    key={status}
-                    variant={statusFilter === status ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => updateParams("status", status)}
-                    className="capitalize justify-start"
-                  >
-                    <div
-                      className={`w-2 h-2 rounded-full mr-2 ${
-                        status === "active"
-                          ? "bg-green-500"
-                          : status === "pending"
-                            ? "bg-yellow-500"
-                            : status === "closed"
-                              ? "bg-blue-500"
-                              : status === "defaulted"
-                                ? "bg-red-500"
-                                : "bg-gray-500"
-                      }`}
-                    />
-                    {status === "all" ? "All" : status}
-                  </Button>
-                ),
-              )}
-            </div>
-          </div>
-
-          {/* Quick View */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Quick View</label>
-            <div className="grid grid-cols-2 gap-2">
-              {[
-                { value: "all", label: "All" },
-                { value: "active", label: "Active" },
-                { value: "pending", label: "Pending" },
-                { value: "closed", label: "Closed" },
-                { value: "defaulted", label: "Defaulted" },
-              ].map((tab) => (
-                <Button
-                  key={tab.value}
-                  variant={activeTab === tab.value ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => updateParams("tab", tab.value)}
-                >
-                  {tab.label}
-                </Button>
-              ))}
-            </div>
-          </div>
+        <div className="p-4 space-y-2">
+          {[
+            { value: "all", label: "All Customers", color: "bg-gray-500", count: totalCustomers },
+            { value: "active", label: "Active", color: "bg-green-500", count: activeCustomers.length },
+            { value: "pending", label: "Pending", color: "bg-yellow-500", count: pendingCustomers.length },
+            { value: "closed", label: "Closed", color: "bg-blue-500", count: closedCustomers.length },
+            { value: "defaulted", label: "Defaulted", color: "bg-red-500", count: defaultedCustomers.length },
+            { value: "upcoming", label: "Upcoming (Last Month)", color: "bg-purple-500", count: upcomingCustomers.length },
+            { value: "overdue", label: "Overdue", color: "bg-orange-500", count: overdueCustomers.length },
+          ].map((status) => (
+            <Button
+              key={status.value}
+              variant={statusFilter === status.value ? "default" : "ghost"}
+              size="sm"
+              onClick={() => updateParams("status", status.value)}
+              className="w-full justify-between"
+            >
+              <div className="flex items-center gap-2">
+                <div className={`w-2 h-2 rounded-full ${status.color}`} />
+                <span>{status.label}</span>
+              </div>
+              <Badge variant="secondary" className="text-xs">
+                {status.count}
+              </Badge>
+            </Button>
+          ))}
         </div>
 
-        <div className="p-4 border-t bg-muted/50 flex justify-between">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              updateParams("status", "all");
-              updateParams("tab", "all");
-              updateParams("search", "");
-            }}
-          >
-            Clear all
-          </Button>
-          <Badge variant="outline">
-            {getActiveFilterCount()} active filter{getActiveFilterCount() !== 1 ? 's' : ''}
-          </Badge>
-        </div>
+        {statusFilter !== "all" && (
+          <div className="p-3 border-t bg-muted/50">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => updateParams("status", "all")}
+              className="w-full"
+            >
+              Clear Filter
+            </Button>
+          </div>
+        )}
       </PopoverContent>
     </Popover>
   );
@@ -819,68 +699,6 @@ export default function Customers() {
     );
   };
 
-  // Responsive Tabs Component
-  const ResponsiveTabs = () => {
-    if (isMobile) {
-      return (
-        <ScrollArea className="w-full pb-2">
-          <div className="flex space-x-2 min-w-max px-1">
-            {["all", "active", "pending", "closed", "defaulted"].map((tab) => (
-              <Button
-                key={tab}
-                variant={activeTab === tab ? "default" : "outline"}
-                size="sm"
-                onClick={() => updateParams("tab", tab)}
-                className="whitespace-nowrap capitalize text-xs sm:text-sm"
-              >
-                {tab === "all" ? "All" : tab}
-                {tab !== "all" && (
-                  <Badge
-                    variant="secondary"
-                    className="ml-2 text-[10px] px-1.5 py-0.5"
-                  >
-                    {{
-                      active: activeCustomers.length,
-                      pending: pendingCustomers.length,
-                      closed: closedCustomers.length,
-                      defaulted: defaultedCustomers.length,
-                    }[tab] || 0}
-                  </Badge>
-                )}
-              </Button>
-            ))}
-          </div>
-        </ScrollArea>
-      );
-    }
-
-    return (
-      <Tabs
-        value={activeTab}
-        onValueChange={(val) => updateParams("tab", val)}
-        className="w-full"
-      >
-        <TabsList className="grid grid-cols-5 h-11">
-          <TabsTrigger value="all" className="text-sm">
-            All
-          </TabsTrigger>
-          <TabsTrigger value="active" className="text-sm">
-            Active
-          </TabsTrigger>
-          <TabsTrigger value="pending" className="text-sm">
-            Pending
-          </TabsTrigger>
-          <TabsTrigger value="closed" className="text-sm">
-            Closed
-          </TabsTrigger>
-          <TabsTrigger value="defaulted" className="text-sm">
-            Defaulted
-          </TabsTrigger>
-        </TabsList>
-      </Tabs>
-    );
-  };
-
   // Loading Skeletons
   const StatCardSkeleton = () => (
     <Card className="animate-pulse">
@@ -893,7 +711,7 @@ export default function Customers() {
 
   const TableRowSkeleton = () => (
     <TableRow>
-      {[...Array(7)].map((_, i) => (
+      {[...Array(8)].map((_, i) => (
         <TableCell key={i}>
           <Skeleton className="h-4 w-full" />
         </TableCell>
@@ -904,6 +722,10 @@ export default function Customers() {
   // Mobile Card View
   const MobileCustomerCard = ({ customer }: { customer: Loan }) => {
     const calc = calculateDirectInterest(customer);
+    const daysUntilEnd = getDaysUntilEnd(customer);
+    const daysOverdue = getDaysOverdue(customer);
+    const isUpcomingView = statusFilter === "upcoming";
+    const isOverdueView = statusFilter === "overdue";
 
     return (
       <Card className="mb-4 hover:shadow-lg transition-shadow duration-300 border-border/60">
@@ -922,37 +744,43 @@ export default function Customers() {
                 </div>
               )}
               <div className="flex-1">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="font-semibold text-foreground">
-                      {customer.name}
-                    </h3>
-                    <p className="text-sm text-muted-foreground">
-                      {customer.phone}
-                    </p>
-                  </div>
-                  <Badge
-                    className={`flex items-center gap-1 px-2 py-1 text-xs ${statusStyles[customer.status]}`}
-                    variant="outline"
-                  >
-                    {getStatusIcon(customer.status)}
-                    <span className="capitalize">
-                      {customer.status.charAt(0)}
-                    </span>
-                  </Badge>
+                <div>
+                  <h3 className="font-semibold text-foreground">{customer.name}</h3>
+                  <p className="text-sm text-muted-foreground">{customer.phone}</p>
                 </div>
               </div>
             </div>
+            <Badge
+              className={`flex items-center gap-1 px-2 py-1 text-xs ${statusStyles[customer.status]}`}
+              variant="outline"
+            >
+              {getStatusIcon(customer.status)}
+              <span className="capitalize">{customer.status.charAt(0)}</span>
+            </Badge>
           </div>
+
+          {isUpcomingView && daysUntilEnd !== null && daysUntilEnd >= 0 && (
+            <div className="mb-3 p-2 bg-purple-50 rounded-lg border border-purple-200">
+              <p className="text-xs text-purple-700 font-medium">
+                ⏰ Loan ends in {daysUntilEnd} days ({formatDate(getLoanEndDate(customer)?.toISOString() || "")})
+              </p>
+            </div>
+          )}
+
+          {isOverdueView && daysOverdue !== null && daysOverdue > 0 && (
+            <div className="mb-3 p-2 bg-orange-50 rounded-lg border border-orange-200">
+              <p className="text-xs text-orange-700 font-medium">
+                ⚠️ Overdue by {daysOverdue} days (Loan ended on {formatDate(getLoanEndDate(customer)?.toISOString() || "")})
+              </p>
+            </div>
+          )}
 
           <div className="grid grid-cols-2 gap-3 mb-3">
             <div>
               <p className="text-xs text-muted-foreground mb-1">Loan Amount</p>
               <div className="flex items-center">
                 <IndianRupee className="w-4 h-4 mr-1" />
-                <span className="font-bold text-base">
-                  {formatCurrency(customer.loanAmount)}
-                </span>
+                <span className="font-bold text-base">{formatCurrency(customer.loanAmount)}</span>
               </div>
             </div>
             <div>
@@ -1004,7 +832,6 @@ export default function Customers() {
     <DashboardLayout>
       <div className="w-full min-w-0">
         <div className="space-y-6 p-4 md:p-6 max-w-full overflow-x-hidden">
-          {/* Mobile Filters Sheet */}
           <MobileFiltersSheet />
 
           {/* Header */}
@@ -1071,9 +898,9 @@ export default function Customers() {
           </div>
 
           {/* Statistics Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-3 sm:gap-4">
             {loading ? (
-              [...Array(5)].map((_, i) => <StatCardSkeleton key={i} />)
+              [...Array(7)].map((_, i) => <StatCardSkeleton key={i} />)
             ) : (
               <>
                 <Card className="border-l-4 border-l-green-500 hover:shadow-md transition-shadow">
@@ -1082,25 +909,13 @@ export default function Customers() {
                       <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900/30">
                         <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-green-600 dark:text-green-400" />
                       </div>
-                      <Badge
-                        variant="outline"
-                        className="bg-green-50 text-green-700 text-xs"
-                      >
-                        +
-                        {(
-                          (activeCustomers.length / totalCustomers) *
-                          100
-                        ).toFixed(1)}
-                        %
+                      <Badge variant="outline" className="bg-green-50 text-green-700 text-xs">
+                        +{((activeCustomers.length / totalCustomers) * 100).toFixed(1)}%
                       </Badge>
                     </div>
-                    <p className="text-xs sm:text-sm text-muted-foreground">
-                      Active Loans
-                    </p>
+                    <p className="text-xs sm:text-sm text-muted-foreground">Active Loans</p>
                     <div className="flex items-end justify-between mt-2">
-                      <h3 className="text-xl sm:text-2xl font-bold">
-                        {activeCustomers.length}
-                      </h3>
+                      <h3 className="text-xl sm:text-2xl font-bold">{activeCustomers.length}</h3>
                       <p className="text-xs sm:text-sm text-green-600 font-medium truncate ml-2">
                         {formatCurrency(activeAmount)}
                       </p>
@@ -1115,13 +930,9 @@ export default function Customers() {
                         <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 dark:text-blue-400" />
                       </div>
                     </div>
-                    <p className="text-xs sm:text-sm text-muted-foreground">
-                      Closed Loans
-                    </p>
+                    <p className="text-xs sm:text-sm text-muted-foreground">Closed Loans</p>
                     <div className="flex items-end justify-between mt-2">
-                      <h3 className="text-xl sm:text-2xl font-bold">
-                        {closedCustomers.length}
-                      </h3>
+                      <h3 className="text-xl sm:text-2xl font-bold">{closedCustomers.length}</h3>
                       <p className="text-xs sm:text-sm text-blue-600 font-medium truncate ml-2">
                         {formatCurrency(closedAmount)}
                       </p>
@@ -1136,13 +947,9 @@ export default function Customers() {
                         <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-600 dark:text-yellow-400" />
                       </div>
                     </div>
-                    <p className="text-xs sm:text-sm text-muted-foreground">
-                      Pending Loans
-                    </p>
+                    <p className="text-xs sm:text-sm text-muted-foreground">Pending Loans</p>
                     <div className="flex items-end justify-between mt-2">
-                      <h3 className="text-xl sm:text-2xl font-bold">
-                        {pendingCustomers.length}
-                      </h3>
+                      <h3 className="text-xl sm:text-2xl font-bold">{pendingCustomers.length}</h3>
                       <p className="text-xs sm:text-sm text-yellow-600 font-medium truncate ml-2">
                         {formatCurrency(pendingAmount)}
                       </p>
@@ -1156,20 +963,13 @@ export default function Customers() {
                       <div className="p-2 rounded-lg bg-red-100 dark:bg-red-900/30">
                         <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-red-600 dark:text-red-400" />
                       </div>
-                      <Badge
-                        variant="outline"
-                        className="bg-red-50 text-red-700 text-xs"
-                      >
+                      <Badge variant="outline" className="bg-red-50 text-red-700 text-xs">
                         Alert
                       </Badge>
                     </div>
-                    <p className="text-xs sm:text-sm text-muted-foreground">
-                      Defaulted Loans
-                    </p>
+                    <p className="text-xs sm:text-sm text-muted-foreground">Defaulted Loans</p>
                     <div className="flex items-end justify-between mt-2">
-                      <h3 className="text-xl sm:text-2xl font-bold">
-                        {defaultedCustomers.length}
-                      </h3>
+                      <h3 className="text-xl sm:text-2xl font-bold">{defaultedCustomers.length}</h3>
                       <p className="text-xs sm:text-sm text-red-600 font-medium truncate ml-2">
                         {formatCurrency(defaultedAmount)}
                       </p>
@@ -1184,15 +984,45 @@ export default function Customers() {
                         <Wallet className="w-4 h-4 sm:w-5 sm:h-5 text-purple-600 dark:text-purple-400" />
                       </div>
                     </div>
-                    <p className="text-xs sm:text-sm text-muted-foreground">
-                      Total Portfolio
-                    </p>
+                    <p className="text-xs sm:text-sm text-muted-foreground">Total Portfolio</p>
                     <div className="flex items-end justify-between mt-2">
-                      <h3 className="text-xl sm:text-2xl font-bold">
-                        {totalCustomers}
-                      </h3>
+                      <h3 className="text-xl sm:text-2xl font-bold">{totalCustomers}</h3>
                       <p className="text-xs sm:text-sm font-medium truncate ml-2">
                         {formatCurrency(totalAmount)}
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="border-l-4 border-l-orange-500 bg-orange-50/30 hover:shadow-md transition-shadow">
+                  <CardContent className="p-4 sm:p-6">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="p-2 rounded-lg bg-orange-100 dark:bg-orange-900/30">
+                        <Calendar className="w-4 h-4 sm:w-5 sm:h-5 text-orange-600 dark:text-orange-400" />
+                      </div>
+                    </div>
+                    <p className="text-xs sm:text-sm text-muted-foreground">Upcoming</p>
+                    <div className="flex items-end justify-between mt-2">
+                      <h3 className="text-xl sm:text-2xl font-bold text-orange-600">{upcomingCustomers.length}</h3>
+                      <p className="text-xs sm:text-sm text-orange-600 font-medium truncate ml-2">
+                        Ending soon
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="border-l-4 border-l-red-700 bg-red-50/30 hover:shadow-md transition-shadow">
+                  <CardContent className="p-4 sm:p-6">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="p-2 rounded-lg bg-red-100 dark:bg-red-900/30">
+                        <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-red-700 dark:text-red-400" />
+                      </div>
+                    </div>
+                    <p className="text-xs sm:text-sm text-muted-foreground">Overdue</p>
+                    <div className="flex items-end justify-between mt-2">
+                      <h3 className="text-xl sm:text-2xl font-bold text-red-700">{overdueCustomers.length}</h3>
+                      <p className="text-xs sm:text-sm text-red-700 font-medium truncate ml-2">
+                        Expired loans
                       </p>
                     </div>
                   </CardContent>
@@ -1201,15 +1031,13 @@ export default function Customers() {
             )}
           </div>
 
-          {/* Search and Filters Section - Now Separated */}
+          {/* Search and Filters Section */}
           <Card className="w-full">
             <CardContent className="p-4 sm:p-6">
               <div className="space-y-4">
-                {/* Search Bar - Always at top */}
                 <div className="flex gap-2">
                   <ResponsiveSearch />
                   
-                  {/* Filter Button - Separated from Search */}
                   {isMobile ? (
                     <Button
                       variant="outline"
@@ -1229,42 +1057,13 @@ export default function Customers() {
                   )}
                 </div>
 
-                {/* Tabs - Below Search on mobile, inline on desktop */}
-                <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-                  <div className="flex-1 min-w-0">
-                    <ResponsiveTabs />
-                  </div>
-                  
-                  {/* Quick Stats Badge - Optional */}
-                  {!isMobile && getActiveFilterCount() > 0 && (
-                    <Badge variant="secondary" className="flex-shrink-0">
-                      {getActiveFilterCount()} active filter{getActiveFilterCount() !== 1 ? 's' : ''}
-                    </Badge>
-                  )}
-                </div>
-
-                {/* Active Filters Display - Mobile */}
-                {isMobile && getActiveFilterCount() > 0 && (
+                {(statusFilter !== "all" || searchQuery) && (
                   <div className="flex flex-wrap items-center gap-2 pt-2">
                     <span className="text-xs text-muted-foreground">Active filters:</span>
                     {statusFilter !== "all" && (
                       <Badge variant="secondary" className="gap-1">
-                        Status: {statusFilter}
-                        <button
-                          onClick={() => updateParams("status", "all")}
-                          className="ml-1 hover:text-destructive"
-                        >
-                          <XCircleIcon className="w-3 h-3" />
-                        </button>
-                      </Badge>
-                    )}
-                    {activeTab !== "all" && (
-                      <Badge variant="secondary" className="gap-1">
-                        View: {activeTab}
-                        <button
-                          onClick={() => updateParams("tab", "all")}
-                          className="ml-1 hover:text-destructive"
-                        >
+                        Status: {statusFilter === "upcoming" ? "Upcoming" : statusFilter === "overdue" ? "Overdue" : statusFilter}
+                        <button onClick={() => updateParams("status", "all")} className="ml-1 hover:text-destructive">
                           <XCircleIcon className="w-3 h-3" />
                         </button>
                       </Badge>
@@ -1272,10 +1071,7 @@ export default function Customers() {
                     {searchQuery && (
                       <Badge variant="secondary" className="gap-1">
                         Search: "{searchQuery}"
-                        <button
-                          onClick={clearSearch}
-                          className="ml-1 hover:text-destructive"
-                        >
+                        <button onClick={clearSearch} className="ml-1 hover:text-destructive">
                           <XCircleIcon className="w-3 h-3" />
                         </button>
                       </Badge>
@@ -1286,7 +1082,6 @@ export default function Customers() {
                       className="h-7 text-xs"
                       onClick={() => {
                         updateParams("status", "all");
-                        updateParams("tab", "all");
                         updateParams("search", "");
                       }}
                     >
@@ -1305,7 +1100,7 @@ export default function Customers() {
               <span className="text-sm text-muted-foreground truncate">
                 Showing{" "}
                 <span className="font-semibold text-foreground">
-                  {filteredCustomers.length}
+                  {sortedFilteredCustomers.length}
                 </span>{" "}
                 of{" "}
                 <span className="font-semibold text-foreground">
@@ -1314,7 +1109,7 @@ export default function Customers() {
                 customers
               </span>
             </div>
-            {filteredCustomers.length > 0 && (
+            {sortedFilteredCustomers.length > 0 && (
               <Button
                 variant="ghost"
                 size="sm"
@@ -1322,12 +1117,12 @@ export default function Customers() {
                 className="gap-2 text-sm flex-shrink-0"
               >
                 <Download className="w-4 h-4" />
-                Export Filtered ({filteredCustomers.length})
+                Export Filtered ({sortedFilteredCustomers.length})
               </Button>
             )}
           </div>
 
-          {/* Content - Rest of your code remains same */}
+          {/* Content */}
           {loading ? (
             <Card>
               <CardContent className="p-6">
@@ -1338,7 +1133,7 @@ export default function Customers() {
                 </div>
               </CardContent>
             </Card>
-          ) : filteredCustomers.length === 0 ? (
+          ) : sortedFilteredCustomers.length === 0 ? (
             <Card className="text-center py-16">
               <CardContent>
                 <div className="mx-auto w-24 h-24 rounded-full bg-muted/50 flex items-center justify-center mb-6">
@@ -1360,7 +1155,7 @@ export default function Customers() {
             </Card>
           ) : isMobile ? (
             <div className="space-y-4">
-              {filteredCustomers.map((customer) => (
+              {sortedFilteredCustomers.map((customer) => (
                 <MobileCustomerCard key={customer._id} customer={customer} />
               ))}
             </div>
@@ -1372,23 +1167,24 @@ export default function Customers() {
                     <TableHeader>
                       <TableRow className="bg-muted/30 hover:bg-muted/30">
                         <TableHead className="font-semibold w-[200px]">Customer</TableHead>
-                        <TableHead className="font-semibold w-[180px]">
-                          Contact & ID
-                        </TableHead>
-                        <TableHead className="font-semibold w-[180px]">
-                          Loan Details
-                        </TableHead>
+                        <TableHead className="font-semibold w-[180px]">Contact & ID</TableHead>
+                        <TableHead className="font-semibold w-[180px]">Loan Details</TableHead>
                         <TableHead className="font-semibold w-[180px]">Financials</TableHead>
                         <TableHead className="font-semibold w-[120px]">Status</TableHead>
                         <TableHead className="font-semibold w-[140px]">Date</TableHead>
-                        <TableHead className="font-semibold w-[100px] text-right">
-                          Actions
-                        </TableHead>
+                        {(statusFilter === "upcoming" || statusFilter === "overdue") && (
+                          <TableHead className="font-semibold w-[100px]">
+                            {statusFilter === "upcoming" ? "Days Left" : "Overdue Days"}
+                          </TableHead>
+                        )}
+                        <TableHead className="font-semibold w-[100px] text-right">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredCustomers.map((customer) => {
+                      {sortedFilteredCustomers.map((customer) => {
                         const calc = calculateDirectInterest(customer);
+                        const daysUntilEnd = getDaysUntilEnd(customer);
+                        const daysOverdue = getDaysOverdue(customer);
                         
                         return (
                           <TableRow
@@ -1396,7 +1192,6 @@ export default function Customers() {
                             className="hover:bg-muted/10 border-border/50 group cursor-pointer transition-colors"
                             onClick={() => navigate(`/customers/${customer._id}`)}
                           >
-                            {/* Customer Info */}
                             <TableCell className="w-[200px]">
                               <div className="flex items-center gap-3">
                                 {customer.customerImage?.url ? (
@@ -1415,20 +1210,17 @@ export default function Customers() {
                                     {customer.name}
                                   </p>
                                   <p className="text-xs text-muted-foreground truncate">
-                                    ID: {customer._id.substring(-8)}
+                                    ID: {customer._id.slice(-8)}
                                   </p>
                                 </div>
                               </div>
                             </TableCell>
 
-                            {/* Contact & ID */}
                             <TableCell className="w-[180px]">
                               <div className="space-y-2">
                                 <div className="flex items-center gap-2 truncate">
                                   <Phone className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                                  <span className="font-medium truncate">
-                                    {customer.phone}
-                                  </span>
+                                  <span className="font-medium truncate">{customer.phone}</span>
                                 </div>
                                 <div className="flex items-center gap-2 truncate">
                                   <Badge
@@ -1444,7 +1236,6 @@ export default function Customers() {
                               </div>
                             </TableCell>
 
-                            {/* Loan Details */}
                             <TableCell className="w-[180px]">
                               <div className="space-y-2">
                                 <div className="flex items-center gap-2">
@@ -1455,9 +1246,7 @@ export default function Customers() {
                                 </div>
                                 <div className="space-y-1">
                                   <div className="text-sm">
-                                    <span className="font-medium">
-                                      {customer.interestRate}% Interest
-                                    </span>
+                                    <span className="font-medium">{customer.interestRate}% Interest</span>
                                   </div>
                                   <div className="text-xs text-muted-foreground">
                                     {getTermDuration(customer)}
@@ -1469,13 +1258,10 @@ export default function Customers() {
                               </div>
                             </TableCell>
 
-                            {/* Financials */}
                             <TableCell className="w-[180px]">
                               <div className="space-y-2">
                                 <div>
-                                  <p className="text-xs text-muted-foreground">
-                                    Total Payable
-                                  </p>
+                                  <p className="text-xs text-muted-foreground">Total Payable</p>
                                   <div className="flex items-center gap-2">
                                     <IndianRupee className="w-4 h-4 flex-shrink-0" />
                                     <p className="font-semibold truncate">
@@ -1484,9 +1270,7 @@ export default function Customers() {
                                   </div>
                                 </div>
                                 <div>
-                                  <p className="text-xs text-muted-foreground">
-                                    Monthly EMI
-                                  </p>
+                                  <p className="text-xs text-muted-foreground">Monthly EMI</p>
                                   <div className="flex items-center gap-2">
                                     <IndianRupee className="w-4 h-4 text-green-600 flex-shrink-0" />
                                     <p className="font-semibold text-green-600 truncate">
@@ -1503,18 +1287,24 @@ export default function Customers() {
                               </div>
                             </TableCell>
 
-                            {/* Status */}
                             <TableCell className="w-[120px]">
-                              <Badge
-                                className={`flex items-center gap-1.5 px-3 py-1.5 capitalize font-medium ${statusStyles[customer.status]} w-fit`}
-                                variant="outline"
-                              >
-                                {getStatusIcon(customer.status)}
-                                <span className="truncate">{customer.status}</span>
-                              </Badge>
+                              <div className="flex flex-col gap-1">
+                                <Badge
+                                  className={`flex items-center gap-1.5 px-3 py-1.5 capitalize font-medium ${statusStyles[customer.status]} w-fit`}
+                                  variant="outline"
+                                >
+                                  {getStatusIcon(customer.status)}
+                                  <span className="truncate">{customer.status}</span>
+                                </Badge>
+                                {(statusFilter === "upcoming" && daysUntilEnd !== null && daysUntilEnd >= 0) && (
+                                  <Badge className="bg-purple-500 text-white text-xs w-fit">⚡ {daysUntilEnd}d left</Badge>
+                                )}
+                                {(statusFilter === "overdue" && daysOverdue !== null && daysOverdue > 0) && (
+                                  <Badge className="bg-orange-500 text-white text-xs w-fit">🔥 {daysOverdue}d overdue</Badge>
+                                )}
+                              </div>
                             </TableCell>
 
-                            {/* Date */}
                             <TableCell className="w-[140px]">
                               <div className="flex items-center gap-2">
                                 <Calendar className="w-4 h-4 text-muted-foreground flex-shrink-0" />
@@ -1524,7 +1314,21 @@ export default function Customers() {
                               </div>
                             </TableCell>
 
-                            {/* Actions */}
+                            {(statusFilter === "upcoming" || statusFilter === "overdue") && (
+                              <TableCell className="w-[100px]">
+                                {statusFilter === "upcoming" && daysUntilEnd !== null && daysUntilEnd >= 0 && (
+                                  <Badge variant="outline" className="bg-purple-50 text-purple-700">
+                                    {daysUntilEnd} days
+                                  </Badge>
+                                )}
+                                {statusFilter === "overdue" && daysOverdue !== null && daysOverdue > 0 && (
+                                  <Badge variant="outline" className="bg-orange-50 text-orange-700">
+                                    {daysOverdue} days
+                                  </Badge>
+                                )}
+                              </TableCell>
+                            )}
+
                             <TableCell className="w-[100px] text-right">
                               <div className="flex justify-end gap-2">
                                 <TooltipProvider>
@@ -1586,17 +1390,13 @@ export default function Customers() {
                                     <DropdownMenuLabel>Actions</DropdownMenuLabel>
                                     <DropdownMenuSeparator />
                                     <DropdownMenuItem
-                                      onClick={() =>
-                                        navigate(`/customers/${customer._id}`)
-                                      }
+                                      onClick={() => navigate(`/customers/${customer._id}`)}
                                     >
                                       <Eye className="w-4 h-4 mr-2" />
                                       View Details
                                     </DropdownMenuItem>
                                     <DropdownMenuItem
-                                      onClick={() =>
-                                        navigate(`/customer-form/${customer._id}`)
-                                      }
+                                      onClick={() => navigate(`/customer-form/${customer._id}`)}
                                     >
                                       <Edit className="w-4 h-4 mr-2" />
                                       Edit Profile
@@ -1622,11 +1422,10 @@ export default function Customers() {
                 </div>
               </div>
 
-              {/* Table Footer */}
-              {filteredCustomers.length > 10 && (
+              {sortedFilteredCustomers.length > 10 && (
                 <CardFooter className="flex flex-col sm:flex-row items-center justify-between border-t px-6 py-4 gap-4">
                   <div className="text-sm text-muted-foreground">
-                    Showing 1-10 of {filteredCustomers.length} customers
+                    Showing 1-10 of {sortedFilteredCustomers.length} customers
                   </div>
                   <div className="flex gap-2">
                     <Button variant="outline" size="sm" disabled>
