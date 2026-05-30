@@ -258,16 +258,17 @@ export default function Customers() {
     setShowSearchClear(false);
   };
 
-  const applyMobileFilters = () => {
-    updateParams("status", tempFilters.status);
-    setShowMobileFilters(false);
-  };
+ const applyMobileFilter = (statusValue: string) => {
+  setTempFilters({ status: statusValue });
+  updateParams("status", statusValue);
+  setShowMobileFilters(false);
+};
 
-  const resetMobileFilters = () => {
-    setTempFilters({
-      status: "all",
-    });
-  };
+const resetMobileFilters = () => {
+  setTempFilters({ status: "all" });
+  updateParams("status", "all");
+  setShowMobileFilters(false);
+};
 
   useEffect(() => {
     fetchCustomers();
@@ -314,124 +315,191 @@ export default function Customers() {
     }
   };
 
-  const exportPDF = () => {
-    const dataToExport = filteredCustomers;
+const exportPDF = () => {
+  const dataToExport = filteredCustomers;
+  
+  if (dataToExport.length === 0) {
+    alert("No data to export based on current filters");
+    return;
+  }
+
+  const doc = new jsPDF({
+    orientation: 'landscape',
+    unit: 'mm',
+    format: 'a4'
+  });
+
+  // Header
+  doc.setFillColor(22, 160, 133);
+  doc.rect(0, 0, doc.internal.pageSize.width, 20, 'F');
+  
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(16);
+  doc.setFont("helvetica", "bold");
+  doc.text("Loan Management System", 14, 13);
+  
+  doc.setFontSize(10);
+  doc.setFont("helvetica", "normal");
+  doc.text(`Generated: ${new Date().toLocaleString('en-IN')}`, doc.internal.pageSize.width - 50, 13);
+  
+  doc.setTextColor(0, 0, 0);
+  doc.setFontSize(18);
+  doc.setFont("helvetica", "bold");
+  doc.text("Customer & Loan Report", 14, 30);
+  
+  doc.setFontSize(10);
+  doc.setFont("helvetica", "italic");
+  let filterText = "Filters Applied: ";
+  if (statusFilter !== "all") filterText += `Status = ${statusFilter} `;
+  if (searchQuery) filterText += `| Search = "${searchQuery}" `;
+  if (filterText === "Filters Applied: ") filterText = "No filters applied - Showing all customers";
+  doc.text(filterText, 14, 37);
+  
+  const totalLoanAmount = dataToExport.reduce((sum, c) => sum + c.loanAmount, 0);
+  const avgLoanAmount = totalLoanAmount / dataToExport.length;
+  
+  doc.setFontSize(9);
+  doc.setFont("helvetica", "normal");
+  doc.text(`Total Records: ${dataToExport.length}`, 14, 44);
+  doc.text(`Total Portfolio: ${formatCurrency(totalLoanAmount)}`, 70, 44);
+  doc.text(`Average Loan: ${formatCurrency(avgLoanAmount)}`, 130, 44);
+  
+  // Table Columns
+  const tableColumn = [
+    "S.No", 
+    "Name", 
+    "Phone", 
+    "ID Type", 
+    "ID Number", 
+    "Join Date",
+    "Receiving Date",
+    "Duration", 
+    "Loan Amount", 
+    "Total Payable", 
+    "Monthly EMI",
+    "Overdue Days",
+    "Status"
+  ];
+
+  const tableRows: any[] = [];
+  dataToExport.forEach((c, index) => {
+    const calc = calculateDirectInterest(c);
+    const duration = c.term === "months" ? `${c.months} months` : c.years ? `${c.years} years` : "-";
+    const endDate = getLoanEndDate(c);
+    const daysOverdue = getDaysOverdue(c);
+    const isOverdue = daysOverdue !== null && daysOverdue > 0 && c.status === "active";
     
-    if (dataToExport.length === 0) {
-      alert("No data to export based on current filters");
-      return;
+    // Calculate receiving date (end date of loan)
+    let receivingDate = "-";
+    if (endDate) {
+      receivingDate = formatDate(endDate.toISOString());
     }
+    
+    // Overdue days display - only for active loans that are overdue
+    let overdueDisplay = "-";
+    if (isOverdue && daysOverdue !== null) {
+      overdueDisplay = `${daysOverdue} days`;
+    }
+    
+    tableRows.push([
+      index + 1, 
+      c.name, 
+      c.phone, 
+      c.idType, 
+      c.idNumber,
+      formatDate(c.joinDate),
+      receivingDate,
+      duration,
+      `Rs. ${c.loanAmount.toLocaleString("en-IN")}`,
+      `Rs. ${Math.round(calc.totalPayable).toLocaleString("en-IN")}`,
+      `Rs. ${Math.round(calc.monthlyInstallment).toLocaleString("en-IN")}`,
+      overdueDisplay,
+      c.status.charAt(0).toUpperCase() + c.status.slice(1),
+    ]);
+  });
 
-    const doc = new jsPDF({
-      orientation: 'landscape',
-      unit: 'mm',
-      format: 'a4'
-    });
+  // Generate table with conditional row coloring for overdue loans
+  autoTable(doc, {
+    head: [tableColumn],
+    body: tableRows,
+    startY: 48,
+    styles: { 
+      fontSize: 7, 
+      cellPadding: 2, 
+      lineColor: [220, 220, 220], 
+      lineWidth: 0.1 
+    },
+    headStyles: { 
+      fillColor: [22, 160, 133], 
+      textColor: [255, 255, 255], 
+      fontSize: 7, 
+      fontStyle: 'bold', 
+      halign: 'center' 
+    },
+    alternateRowStyles: { fillColor: [245, 245, 245] },
+    columnStyles: { 
+      0: { cellWidth: 10, halign: 'center' }, 
+      8: { halign: 'right' }, 
+      9: { halign: 'right' }, 
+      10: { halign: 'right' },
+      11: { halign: 'center' },
+      12: { halign: 'center' }
+    },
+    // Custom row styling for overdue loans (entire row in red)
+    didParseCell: (data) => {
+      const rowData = tableRows[data.row.index];
+      if (rowData) {
+        const status = rowData[12].toLowerCase();
+        const overdueDays = rowData[11];
+        // Check if loan is active and overdue
+        if (status === 'active' && overdueDays !== '-' && overdueDays !== '0 days') {
+          data.cell.styles.textColor = [220, 38, 38]; // Red color for overdue rows
+        }
+      }
+    },
+    didDrawPage: (data) => {
+      doc.setFontSize(8);
+      doc.setTextColor(100, 100, 100);
+      doc.text(`Page ${doc.getCurrentPageInfo().pageNumber}`, doc.internal.pageSize.width - 20, doc.internal.pageSize.height - 10);
+      doc.text("Confidential - For Internal Use Only", 14, doc.internal.pageSize.height - 10);
+    },
+  });
 
-    doc.setFillColor(22, 160, 133);
-    doc.rect(0, 0, doc.internal.pageSize.width, 20, 'F');
-    
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(16);
-    doc.setFont("helvetica", "bold");
-    doc.text("Loan Management System", 14, 13);
-    
-    doc.setFontSize(10);
-    doc.setFont("helvetica", "normal");
-    doc.text(`Generated: ${new Date().toLocaleString('en-IN')}`, doc.internal.pageSize.width - 50, 13);
-    
-    doc.setTextColor(0, 0, 0);
-    doc.setFontSize(18);
-    doc.setFont("helvetica", "bold");
-    doc.text("Customer & Loan Report", 14, 30);
-    
-    doc.setFontSize(10);
-    doc.setFont("helvetica", "italic");
-    let filterText = "Filters Applied: ";
-    if (statusFilter !== "all") filterText += `Status = ${statusFilter} `;
-    if (searchQuery) filterText += `| Search = "${searchQuery}" `;
-    if (filterText === "Filters Applied: ") filterText = "No filters applied - Showing all customers";
-    doc.text(filterText, 14, 37);
-    
-    const totalLoanAmount = dataToExport.reduce((sum, c) => sum + c.loanAmount, 0);
-    const avgLoanAmount = totalLoanAmount / dataToExport.length;
-    
-    doc.setFontSize(9);
-    doc.setFont("helvetica", "normal");
-    doc.text(`Total Records: ${dataToExport.length}`, 14, 44);
-    doc.text(`Total Portfolio: ${formatCurrency(totalLoanAmount)}`, 70, 44);
-    doc.text(`Average Loan: ${formatCurrency(avgLoanAmount)}`, 130, 44);
-    
-    const tableColumn = [
-      "S.No", "Name", "Phone", "ID Type", "ID Number", "Loan Amount",
-      "Interest", "Term", "Duration", "Status", "Monthly EMI", "Total Payable", "Join Date",
-    ];
+  // Summary Statistics Page
+  doc.addPage();
+  doc.setFontSize(16);
+  doc.setFont("helvetica", "bold");
+  doc.text("Summary Statistics", 14, 20);
+  
+  doc.setFontSize(11);
+  doc.setFont("helvetica", "normal");
+  
+  const summaryData = [
+    ["Total Customers", dataToExport.length.toString()],
+    ["Total Loan Portfolio", formatCurrency(totalLoanAmount)],
+    ["Average Loan Amount", formatCurrency(avgLoanAmount)],
+    ["Active Loans", dataToExport.filter(c => c.status === 'active').length.toString()],
+    ["Pending Loans", dataToExport.filter(c => c.status === 'pending').length.toString()],
+    ["Closed Loans", dataToExport.filter(c => c.status === 'closed').length.toString()],
+    ["Defaulted Loans", dataToExport.filter(c => c.status === 'defaulted').length.toString()],
+    ["Upcoming Loans (Last Month)", dataToExport.filter(c => isUpcomingLoan(c)).length.toString()],
+    ["Overdue Loans", dataToExport.filter(c => isOverdueLoan(c)).length.toString()],
+  ];
+  
+  autoTable(doc, {
+    body: summaryData,
+    startY: 30,
+    styles: { fontSize: 10, cellPadding: 5 },
+    columnStyles: { 0: { fontStyle: 'bold', cellWidth: 80 }, 1: { halign: 'right', cellWidth: 60 } },
+    theme: 'plain',
+  });
 
-    const tableRows: any[] = [];
-    dataToExport.forEach((c, index) => {
-      const calc = calculateDirectInterest(c);
-      const duration = c.term === "months" ? `${c.months} months` : c.years ? `${c.years} years` : "-";
-      
-      tableRows.push([
-        index + 1, c.name, c.phone, c.idType, c.idNumber,
-        `Rs. ${c.loanAmount.toLocaleString("en-IN")}`,
-        `${c.interestRate}%`, c.term, duration, c.status,
-        `Rs. ${Math.round(calc.monthlyInstallment).toLocaleString("en-IN")}`,
-        `Rs. ${Math.round(calc.totalPayable).toLocaleString("en-IN")}`,
-        formatDate(c.joinDate),
-      ]);
-    });
-
-    autoTable(doc, {
-      head: [tableColumn],
-      body: tableRows,
-      startY: 48,
-      styles: { fontSize: 7, cellPadding: 2, lineColor: [220, 220, 220], lineWidth: 0.1 },
-      headStyles: { fillColor: [22, 160, 133], textColor: [255, 255, 255], fontSize: 7, fontStyle: 'bold', halign: 'center' },
-      alternateRowStyles: { fillColor: [245, 245, 245] },
-      columnStyles: { 0: { cellWidth: 10, halign: 'center' }, 5: { halign: 'right' }, 10: { halign: 'right' }, 11: { halign: 'right' } },
-      didDrawPage: (data) => {
-        doc.setFontSize(8);
-        doc.setTextColor(100, 100, 100);
-        doc.text(`Page ${doc.getCurrentPageInfo().pageNumber}`, doc.internal.pageSize.width - 20, doc.internal.pageSize.height - 10);
-        doc.text("Confidential - For Internal Use Only", 14, doc.internal.pageSize.height - 10);
-      },
-    });
-
-    doc.addPage();
-    doc.setFontSize(16);
-    doc.setFont("helvetica", "bold");
-    doc.text("Summary Statistics", 14, 20);
-    
-    doc.setFontSize(11);
-    doc.setFont("helvetica", "normal");
-    
-    const summaryData = [
-      ["Total Customers", dataToExport.length.toString()],
-      ["Total Loan Portfolio", formatCurrency(totalLoanAmount)],
-      ["Average Loan Amount", formatCurrency(avgLoanAmount)],
-      ["Active Loans", dataToExport.filter(c => c.status === 'active').length.toString()],
-      ["Pending Loans", dataToExport.filter(c => c.status === 'pending').length.toString()],
-      ["Closed Loans", dataToExport.filter(c => c.status === 'closed').length.toString()],
-      ["Defaulted Loans", dataToExport.filter(c => c.status === 'defaulted').length.toString()],
-      ["Upcoming Loans (Last Month)", dataToExport.filter(c => isUpcomingLoan(c)).length.toString()],
-      ["Overdue Loans", dataToExport.filter(c => isOverdueLoan(c)).length.toString()],
-    ];
-    
-    autoTable(doc, {
-      body: summaryData,
-      startY: 30,
-      styles: { fontSize: 10, cellPadding: 5 },
-      columnStyles: { 0: { fontStyle: 'bold', cellWidth: 80 }, 1: { halign: 'right', cellWidth: 60 } },
-      theme: 'plain',
-    });
-
-    let filename = "Loan_Report";
-    if (statusFilter !== "all") filename += `_${statusFilter}`;
-    filename += `_${new Date().toISOString().split('T')[0]}.pdf`;
-    
-    doc.save(filename);
-  };
+  let filename = "Loan_Report";
+  if (statusFilter !== "all") filename += `_${statusFilter}`;
+  filename += `_${new Date().toISOString().split('T')[0]}.pdf`;
+  
+  doc.save(filename);
+};
 
   // Filter customers
   const filteredCustomers = customers.filter((customer) => {
@@ -534,58 +602,58 @@ export default function Customers() {
     return count;
   };
 
-  // Mobile Filters Sheet
-  const MobileFiltersSheet = () => (
-    <Sheet open={showMobileFilters} onOpenChange={setShowMobileFilters}>
-      <SheetContent side="bottom" className="h-[80vh] rounded-t-2xl">
-        <SheetHeader className="text-left">
-          <SheetTitle className="flex items-center gap-2 text-xl">
-            <SlidersHorizontal className="w-5 h-5" />
-            Filter by Status
-          </SheetTitle>
-          <SheetDescription>
-            Select a status to filter customers
-          </SheetDescription>
-        </SheetHeader>
+// Mobile Filters Sheet
+const MobileFiltersSheet = () => (
+  <Sheet open={showMobileFilters} onOpenChange={setShowMobileFilters}>
+    <SheetContent side="bottom" className="h-[80vh] rounded-t-2xl">
+      <SheetHeader className="text-left">
+        <SheetTitle className="flex items-center gap-2 text-xl">
+          <SlidersHorizontal className="w-5 h-5" />
+          Filter by Status
+        </SheetTitle>
+        <SheetDescription>
+          Tap on any status to apply filter instantly
+        </SheetDescription>
+      </SheetHeader>
 
-        <ScrollArea className="h-[calc(80vh-120px)] pr-4">
-          <div className="space-y-2 py-4">
-            {[
-              { value: "all", label: "All Customers", color: "bg-gray-500", count: totalCustomers },
-              { value: "active", label: "Active", color: "bg-green-500", count: activeCustomers.length },
-              { value: "pending", label: "Pending", color: "bg-yellow-500", count: pendingCustomers.length },
-              { value: "closed", label: "Closed", color: "bg-blue-500", count: closedCustomers.length },
-              { value: "defaulted", label: "Defaulted", color: "bg-red-500", count: defaultedCustomers.length },
-              { value: "upcoming", label: "Upcoming (Last Month)", color: "bg-purple-500", count: upcomingCustomers.length },
-              { value: "overdue", label: "Overdue", color: "bg-orange-500", count: overdueCustomers.length },
-            ].map((status) => (
-              <Button
-                key={status.value}
-                variant={tempFilters.status === status.value ? "default" : "outline"}
-                onClick={() => setTempFilters(prev => ({ ...prev, status: status.value }))}
-                className="w-full justify-between h-12"
-              >
-                <div className="flex items-center gap-3">
-                  <div className={`w-3 h-3 rounded-full ${status.color}`} />
-                  <span>{status.label}</span>
-                </div>
-                <Badge variant="secondary">{status.count}</Badge>
-              </Button>
-            ))}
-          </div>
-        </ScrollArea>
+      <ScrollArea className="h-[calc(80vh-120px)] pr-4">
+        <div className="space-y-2 py-4">
+          {[
+            { value: "all", label: "All Customers", color: "bg-gray-500", count: totalCustomers },
+            { value: "active", label: "Active", color: "bg-green-500", count: activeCustomers.length },
+            { value: "pending", label: "Pending", color: "bg-yellow-500", count: pendingCustomers.length },
+            { value: "closed", label: "Closed", color: "bg-blue-500", count: closedCustomers.length },
+            { value: "defaulted", label: "Defaulted", color: "bg-red-500", count: defaultedCustomers.length },
+            { value: "upcoming", label: "Upcoming (Last Month)", color: "bg-purple-500", count: upcomingCustomers.length },
+            { value: "overdue", label: "Overdue", color: "bg-orange-500", count: overdueCustomers.length },
+          ].map((status) => (
+            <Button
+              key={status.value}
+              variant="outline"
+              onClick={() => applyMobileFilter(status.value)}
+              className="w-full justify-between h-12"
+            >
+              <div className="flex items-center gap-3">
+                <div className={`w-3 h-3 rounded-full ${status.color}`} />
+                <span>{status.label}</span>
+              </div>
+              <Badge variant="secondary">{status.count}</Badge>
+            </Button>
+          ))}
+        </div>
+      </ScrollArea>
 
-        <SheetFooter className="flex-row gap-2 pt-4 border-t">
-          <Button variant="outline" className="flex-1" onClick={resetMobileFilters}>
-            Reset
-          </Button>
-          <Button className="flex-1" onClick={applyMobileFilters}>
-            Apply Filter
-          </Button>
-        </SheetFooter>
-      </SheetContent>
-    </Sheet>
-  );
+      <SheetFooter className="flex-row gap-2 pt-4 border-t">
+        <Button variant="outline" className="flex-1" onClick={resetMobileFilters}>
+          Reset All
+        </Button>
+        <Button variant="ghost" className="flex-1" onClick={() => setShowMobileFilters(false)}>
+          Close
+        </Button>
+      </SheetFooter>
+    </SheetContent>
+  </Sheet>
+);
 
   // Desktop Filter Popover
   const DesktopFilterPopover = () => (
