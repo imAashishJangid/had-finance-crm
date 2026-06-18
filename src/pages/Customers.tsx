@@ -42,6 +42,8 @@ import {
   FileText,
   SlidersHorizontal,
   XCircle as XCircleIcon,
+  AlertTriangle,
+  Bell,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -51,11 +53,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  Card,
-  CardContent,
-  CardFooter,
-} from "@/components/ui/card";
+import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import {
   Tooltip,
   TooltipContent,
@@ -130,48 +128,58 @@ interface Loan {
 // Helper: Get loan end date
 const getLoanEndDate = (customer: Loan): Date | null => {
   if (!customer.joinDate) return null;
-  
+
   const startDate = new Date(customer.joinDate);
-  
+
   let totalMonths = 0;
   if (customer.term === "months") {
     totalMonths = customer.months || 0;
   } else {
     totalMonths = (customer.years || 0) * 12;
   }
-  
+
   if (totalMonths === 0) return null;
-  
+
   const endDate = new Date(startDate);
   endDate.setMonth(startDate.getMonth() + totalMonths);
-  
+
   return endDate;
 };
 
 // Helper: Check if loan is upcoming (within last 30 days)
 const isUpcomingLoan = (customer: Loan): boolean => {
   if (customer.status !== "active") return false;
-  
+
   const endDate = getLoanEndDate(customer);
   if (!endDate) return false;
-  
+
   const currentDate = new Date();
-  const daysUntilEnd = Math.ceil((endDate.getTime() - currentDate.getTime()) / (1000 * 3600 * 24));
-  
+  const daysUntilEnd = Math.ceil(
+    (endDate.getTime() - currentDate.getTime()) / (1000 * 3600 * 24),
+  );
+
   return daysUntilEnd >= 0 && daysUntilEnd <= 30;
 };
 
 // Helper: Check if loan is overdue (end date has passed)
 const isOverdueLoan = (customer: Loan): boolean => {
   if (customer.status !== "active") return false;
-  
+
   const endDate = getLoanEndDate(customer);
   if (!endDate) return false;
-  
+
   const currentDate = new Date();
-  const today = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate());
-  const endDateOnly = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate());
-  
+  const today = new Date(
+    currentDate.getFullYear(),
+    currentDate.getMonth(),
+    currentDate.getDate(),
+  );
+  const endDateOnly = new Date(
+    endDate.getFullYear(),
+    endDate.getMonth(),
+    endDate.getDate(),
+  );
+
   return endDateOnly < today;
 };
 
@@ -179,23 +187,35 @@ const isOverdueLoan = (customer: Loan): boolean => {
 const getDaysOverdue = (customer: Loan): number | null => {
   const endDate = getLoanEndDate(customer);
   if (!endDate) return null;
-  
+
   const currentDate = new Date();
-  const today = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate());
-  const endDateOnly = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate());
-  
+  const today = new Date(
+    currentDate.getFullYear(),
+    currentDate.getMonth(),
+    currentDate.getDate(),
+  );
+  const endDateOnly = new Date(
+    endDate.getFullYear(),
+    endDate.getMonth(),
+    endDate.getDate(),
+  );
+
   if (endDateOnly >= today) return null;
-  
-  return Math.ceil((today.getTime() - endDateOnly.getTime()) / (1000 * 3600 * 24));
+
+  return Math.ceil(
+    (today.getTime() - endDateOnly.getTime()) / (1000 * 3600 * 24),
+  );
 };
 
 // Helper: Get days until loan ends
 const getDaysUntilEnd = (customer: Loan): number | null => {
   const endDate = getLoanEndDate(customer);
   if (!endDate) return null;
-  
+
   const currentDate = new Date();
-  return Math.ceil((endDate.getTime() - currentDate.getTime()) / (1000 * 3600 * 24));
+  return Math.ceil(
+    (endDate.getTime() - currentDate.getTime()) / (1000 * 3600 * 24),
+  );
 };
 
 export default function Customers() {
@@ -258,17 +278,17 @@ export default function Customers() {
     setShowSearchClear(false);
   };
 
- const applyMobileFilter = (statusValue: string) => {
-  setTempFilters({ status: statusValue });
-  updateParams("status", statusValue);
-  setShowMobileFilters(false);
-};
+  const applyMobileFilter = (statusValue: string) => {
+    setTempFilters({ status: statusValue });
+    updateParams("status", statusValue);
+    setShowMobileFilters(false);
+  };
 
-const resetMobileFilters = () => {
-  setTempFilters({ status: "all" });
-  updateParams("status", "all");
-  setShowMobileFilters(false);
-};
+  const resetMobileFilters = () => {
+    setTempFilters({ status: "all" });
+    updateParams("status", "all");
+    setShowMobileFilters(false);
+  };
 
   useEffect(() => {
     fetchCustomers();
@@ -315,215 +335,317 @@ const resetMobileFilters = () => {
     }
   };
 
-const exportPDF = () => {
-  const dataToExport = filteredCustomers;
-  
-  if (dataToExport.length === 0) {
-    alert("No data to export based on current filters");
-    return;
+  const exportPDF = () => {
+    const dataToExport = filteredCustomers;
+
+    if (dataToExport.length === 0) {
+      alert("No data to export based on current filters");
+      return;
+    }
+
+    const doc = new jsPDF({
+      orientation: "landscape",
+      unit: "mm",
+      format: "a4",
+    });
+
+    // Header
+    doc.setFillColor(22, 160, 133);
+    doc.rect(0, 0, doc.internal.pageSize.width, 20, "F");
+
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(16);
+    doc.setFont("helvetica", "bold");
+    doc.text("Loan Management System", 14, 13);
+
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");
+    doc.text(
+      `Generated: ${new Date().toLocaleString("en-IN")}`,
+      doc.internal.pageSize.width - 50,
+      13,
+    );
+
+    doc.setTextColor(0, 0, 0);
+    doc.setFontSize(18);
+    doc.setFont("helvetica", "bold");
+    doc.text("Customer & Loan Report", 14, 30);
+
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "italic");
+    let filterText = "Filters Applied: ";
+    if (statusFilter !== "all") filterText += `Status = ${statusFilter} `;
+    if (searchQuery) filterText += `| Search = "${searchQuery}" `;
+    if (filterText === "Filters Applied: ")
+      filterText = "No filters applied - Showing all customers";
+    doc.text(filterText, 14, 37);
+
+    const totalLoanAmount = dataToExport.reduce(
+      (sum, c) => sum + c.loanAmount,
+      0,
+    );
+    const avgLoanAmount = totalLoanAmount / dataToExport.length;
+
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "normal");
+    doc.text(`Total Records: ${dataToExport.length}`, 14, 44);
+    doc.text(`Total Portfolio: ${formatCurrency(totalLoanAmount)}`, 70, 44);
+    doc.text(`Average Loan: ${formatCurrency(avgLoanAmount)}`, 130, 44);
+
+    // Table Columns
+    const tableColumn = [
+      "S.No",
+      "Name",
+      "Phone",
+      "ID Type",
+      "ID Number",
+      "Join Date",
+      "Receiving Date",
+      "Duration",
+      "Loan Amount",
+      "Total Payable",
+      "Monthly EMI",
+      "Overdue Days",
+      "Status",
+    ];
+
+    const tableRows: any[] = [];
+    dataToExport.forEach((c, index) => {
+      const calc = calculateDirectInterest(c);
+      const duration =
+        c.term === "months"
+          ? `${c.months} months`
+          : c.years
+            ? `${c.years} years`
+            : "-";
+      const endDate = getLoanEndDate(c);
+      const daysOverdue = getDaysOverdue(c);
+      const isOverdue =
+        daysOverdue !== null && daysOverdue > 0 && c.status === "active";
+
+      // Calculate receiving date (end date of loan)
+      let receivingDate = "-";
+      if (endDate) {
+        receivingDate = formatDate(endDate.toISOString());
+      }
+
+      // Overdue days display - only for active loans that are overdue
+      let overdueDisplay = "-";
+      if (isOverdue && daysOverdue !== null) {
+        overdueDisplay = `${daysOverdue} days`;
+      }
+
+      tableRows.push([
+        index + 1,
+        c.name,
+        c.phone,
+        c.idType,
+        c.idNumber,
+        formatDate(c.joinDate),
+        receivingDate,
+        duration,
+        `Rs. ${c.loanAmount.toLocaleString("en-IN")}`,
+        `Rs. ${Math.round(calc.totalPayable).toLocaleString("en-IN")}`,
+        `Rs. ${Math.round(calc.monthlyInstallment).toLocaleString("en-IN")}`,
+        overdueDisplay,
+        c.status.charAt(0).toUpperCase() + c.status.slice(1),
+      ]);
+    });
+
+    // Generate table with conditional row coloring for overdue loans
+    autoTable(doc, {
+      head: [tableColumn],
+      body: tableRows,
+      startY: 48,
+      styles: {
+        fontSize: 7,
+        cellPadding: 2,
+        lineColor: [220, 220, 220],
+        lineWidth: 0.1,
+      },
+      headStyles: {
+        fillColor: [22, 160, 133],
+        textColor: [255, 255, 255],
+        fontSize: 7,
+        fontStyle: "bold",
+        halign: "center",
+      },
+      alternateRowStyles: { fillColor: [245, 245, 245] },
+      columnStyles: {
+        0: { cellWidth: 10, halign: "center" },
+        8: { halign: "right" },
+        9: { halign: "right" },
+        10: { halign: "right" },
+        11: { halign: "center" },
+        12: { halign: "center" },
+      },
+      // Custom row styling for overdue loans (entire row in red)
+      didParseCell: (data) => {
+        const rowData = tableRows[data.row.index];
+        if (rowData) {
+          const status = rowData[12].toLowerCase();
+          const overdueDays = rowData[11];
+          // Check if loan is active and overdue
+          if (
+            status === "active" &&
+            overdueDays !== "-" &&
+            overdueDays !== "0 days"
+          ) {
+            data.cell.styles.textColor = [220, 38, 38]; // Red color for overdue rows
+          }
+        }
+      },
+      didDrawPage: (data) => {
+        doc.setFontSize(8);
+        doc.setTextColor(100, 100, 100);
+        doc.text(
+          `Page ${doc.getCurrentPageInfo().pageNumber}`,
+          doc.internal.pageSize.width - 20,
+          doc.internal.pageSize.height - 10,
+        );
+        doc.text(
+          "Confidential - For Internal Use Only",
+          14,
+          doc.internal.pageSize.height - 10,
+        );
+      },
+    });
+
+    // Summary Statistics Page
+    doc.addPage();
+    doc.setFontSize(16);
+    doc.setFont("helvetica", "bold");
+    doc.text("Summary Statistics", 14, 20);
+
+    doc.setFontSize(11);
+    doc.setFont("helvetica", "normal");
+
+    const summaryData = [
+      ["Total Customers", dataToExport.length.toString()],
+      ["Total Loan Portfolio", formatCurrency(totalLoanAmount)],
+      ["Average Loan Amount", formatCurrency(avgLoanAmount)],
+      [
+        "Active Loans",
+        dataToExport.filter((c) => c.status === "active").length.toString(),
+      ],
+      [
+        "Pending Loans",
+        dataToExport.filter((c) => c.status === "pending").length.toString(),
+      ],
+      [
+        "Closed Loans",
+        dataToExport.filter((c) => c.status === "closed").length.toString(),
+      ],
+      [
+        "Defaulted Loans",
+        dataToExport.filter((c) => c.status === "defaulted").length.toString(),
+      ],
+      [
+        "Upcoming Loans (Last Month)",
+        dataToExport.filter((c) => isUpcomingLoan(c)).length.toString(),
+      ],
+      [
+        "Overdue Loans",
+        dataToExport.filter((c) => isOverdueLoan(c)).length.toString(),
+      ],
+    ];
+
+    autoTable(doc, {
+      body: summaryData,
+      startY: 30,
+      styles: { fontSize: 10, cellPadding: 5 },
+      columnStyles: {
+        0: { fontStyle: "bold", cellWidth: 80 },
+        1: { halign: "right", cellWidth: 60 },
+      },
+      theme: "plain",
+    });
+
+    let filename = "Loan_Report";
+    if (statusFilter !== "all") filename += `_${statusFilter}`;
+    filename += `_${new Date().toISOString().split("T")[0]}.pdf`;
+
+    doc.save(filename);
+  };
+
+ // Filter customers
+const filteredCustomers = customers.filter((customer) => {
+  const query = searchQuery.toLowerCase();
+  const matchesSearch =
+    customer.name?.toLowerCase().includes(query) ||
+    customer.phone?.includes(query) ||
+    customer.idNumber?.toLowerCase().includes(query) ||
+    customer._id?.toLowerCase().includes(query);
+
+  // Overdue filter
+  if (statusFilter === "overdue") {
+    return matchesSearch && isOverdueLoan(customer);
   }
 
-  const doc = new jsPDF({
-    orientation: 'landscape',
-    unit: 'mm',
-    format: 'a4'
-  });
+  // Upcoming filter
+  if (statusFilter === "upcoming") {
+    return matchesSearch && isUpcomingLoan(customer);
+  }
 
-  // Header
-  doc.setFillColor(22, 160, 133);
-  doc.rect(0, 0, doc.internal.pageSize.width, 20, 'F');
-  
-  doc.setTextColor(255, 255, 255);
-  doc.setFontSize(16);
-  doc.setFont("helvetica", "bold");
-  doc.text("Loan Management System", 14, 13);
-  
-  doc.setFontSize(10);
-  doc.setFont("helvetica", "normal");
-  doc.text(`Generated: ${new Date().toLocaleString('en-IN')}`, doc.internal.pageSize.width - 50, 13);
-  
-  doc.setTextColor(0, 0, 0);
-  doc.setFontSize(18);
-  doc.setFont("helvetica", "bold");
-  doc.text("Customer & Loan Report", 14, 30);
-  
-  doc.setFontSize(10);
-  doc.setFont("helvetica", "italic");
-  let filterText = "Filters Applied: ";
-  if (statusFilter !== "all") filterText += `Status = ${statusFilter} `;
-  if (searchQuery) filterText += `| Search = "${searchQuery}" `;
-  if (filterText === "Filters Applied: ") filterText = "No filters applied - Showing all customers";
-  doc.text(filterText, 14, 37);
-  
-  const totalLoanAmount = dataToExport.reduce((sum, c) => sum + c.loanAmount, 0);
-  const avgLoanAmount = totalLoanAmount / dataToExport.length;
-  
-  doc.setFontSize(9);
-  doc.setFont("helvetica", "normal");
-  doc.text(`Total Records: ${dataToExport.length}`, 14, 44);
-  doc.text(`Total Portfolio: ${formatCurrency(totalLoanAmount)}`, 70, 44);
-  doc.text(`Average Loan: ${formatCurrency(avgLoanAmount)}`, 130, 44);
-  
-  // Table Columns
-  const tableColumn = [
-    "S.No", 
-    "Name", 
-    "Phone", 
-    "ID Type", 
-    "ID Number", 
-    "Join Date",
-    "Receiving Date",
-    "Duration", 
-    "Loan Amount", 
-    "Total Payable", 
-    "Monthly EMI",
-    "Overdue Days",
-    "Status"
-  ];
+  // Other status filters
+  const matchesStatus =
+    statusFilter === "all" || customer.status === statusFilter;
 
-  const tableRows: any[] = [];
-  dataToExport.forEach((c, index) => {
-    const calc = calculateDirectInterest(c);
-    const duration = c.term === "months" ? `${c.months} months` : c.years ? `${c.years} years` : "-";
-    const endDate = getLoanEndDate(c);
-    const daysOverdue = getDaysOverdue(c);
-    const isOverdue = daysOverdue !== null && daysOverdue > 0 && c.status === "active";
-    
-    // Calculate receiving date (end date of loan)
-    let receivingDate = "-";
-    if (endDate) {
-      receivingDate = formatDate(endDate.toISOString());
-    }
-    
-    // Overdue days display - only for active loans that are overdue
-    let overdueDisplay = "-";
-    if (isOverdue && daysOverdue !== null) {
-      overdueDisplay = `${daysOverdue} days`;
-    }
-    
-    tableRows.push([
-      index + 1, 
-      c.name, 
-      c.phone, 
-      c.idType, 
-      c.idNumber,
-      formatDate(c.joinDate),
-      receivingDate,
-      duration,
-      `Rs. ${c.loanAmount.toLocaleString("en-IN")}`,
-      `Rs. ${Math.round(calc.totalPayable).toLocaleString("en-IN")}`,
-      `Rs. ${Math.round(calc.monthlyInstallment).toLocaleString("en-IN")}`,
-      overdueDisplay,
-      c.status.charAt(0).toUpperCase() + c.status.slice(1),
-    ]);
-  });
+  // Month filter
+  const monthFilter = searchParams.get("month") || "all";
+  let matchesMonth = true;
+  
+  if (monthFilter !== "all") {
+    const joinDate = new Date(customer.joinDate);
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
 
-  // Generate table with conditional row coloring for overdue loans
-  autoTable(doc, {
-    head: [tableColumn],
-    body: tableRows,
-    startY: 48,
-    styles: { 
-      fontSize: 7, 
-      cellPadding: 2, 
-      lineColor: [220, 220, 220], 
-      lineWidth: 0.1 
-    },
-    headStyles: { 
-      fillColor: [22, 160, 133], 
-      textColor: [255, 255, 255], 
-      fontSize: 7, 
-      fontStyle: 'bold', 
-      halign: 'center' 
-    },
-    alternateRowStyles: { fillColor: [245, 245, 245] },
-    columnStyles: { 
-      0: { cellWidth: 10, halign: 'center' }, 
-      8: { halign: 'right' }, 
-      9: { halign: 'right' }, 
-      10: { halign: 'right' },
-      11: { halign: 'center' },
-      12: { halign: 'center' }
-    },
-    // Custom row styling for overdue loans (entire row in red)
-    didParseCell: (data) => {
-      const rowData = tableRows[data.row.index];
-      if (rowData) {
-        const status = rowData[12].toLowerCase();
-        const overdueDays = rowData[11];
-        // Check if loan is active and overdue
-        if (status === 'active' && overdueDays !== '-' && overdueDays !== '0 days') {
-          data.cell.styles.textColor = [220, 38, 38]; // Red color for overdue rows
-        }
+    switch (monthFilter) {
+      case "current":
+        matchesMonth = 
+          joinDate.getMonth() === currentMonth &&
+          joinDate.getFullYear() === currentYear;
+        break;
+      case "last": {
+        const lastMonth = currentMonth === 0 ? 11 : currentMonth - 1;
+        const lastMonthYear = currentMonth === 0 ? currentYear - 1 : currentYear;
+        matchesMonth = 
+          joinDate.getMonth() === lastMonth &&
+          joinDate.getFullYear() === lastMonthYear;
+        break;
       }
-    },
-    didDrawPage: (data) => {
-      doc.setFontSize(8);
-      doc.setTextColor(100, 100, 100);
-      doc.text(`Page ${doc.getCurrentPageInfo().pageNumber}`, doc.internal.pageSize.width - 20, doc.internal.pageSize.height - 10);
-      doc.text("Confidential - For Internal Use Only", 14, doc.internal.pageSize.height - 10);
-    },
-  });
-
-  // Summary Statistics Page
-  doc.addPage();
-  doc.setFontSize(16);
-  doc.setFont("helvetica", "bold");
-  doc.text("Summary Statistics", 14, 20);
-  
-  doc.setFontSize(11);
-  doc.setFont("helvetica", "normal");
-  
-  const summaryData = [
-    ["Total Customers", dataToExport.length.toString()],
-    ["Total Loan Portfolio", formatCurrency(totalLoanAmount)],
-    ["Average Loan Amount", formatCurrency(avgLoanAmount)],
-    ["Active Loans", dataToExport.filter(c => c.status === 'active').length.toString()],
-    ["Pending Loans", dataToExport.filter(c => c.status === 'pending').length.toString()],
-    ["Closed Loans", dataToExport.filter(c => c.status === 'closed').length.toString()],
-    ["Defaulted Loans", dataToExport.filter(c => c.status === 'defaulted').length.toString()],
-    ["Upcoming Loans (Last Month)", dataToExport.filter(c => isUpcomingLoan(c)).length.toString()],
-    ["Overdue Loans", dataToExport.filter(c => isOverdueLoan(c)).length.toString()],
-  ];
-  
-  autoTable(doc, {
-    body: summaryData,
-    startY: 30,
-    styles: { fontSize: 10, cellPadding: 5 },
-    columnStyles: { 0: { fontStyle: 'bold', cellWidth: 80 }, 1: { halign: 'right', cellWidth: 60 } },
-    theme: 'plain',
-  });
-
-  let filename = "Loan_Report";
-  if (statusFilter !== "all") filename += `_${statusFilter}`;
-  filename += `_${new Date().toISOString().split('T')[0]}.pdf`;
-  
-  doc.save(filename);
-};
-
-  // Filter customers
-  const filteredCustomers = customers.filter((customer) => {
-    const query = searchQuery.toLowerCase();
-    const matchesSearch =
-      customer.name?.toLowerCase().includes(query) ||
-      customer.phone?.includes(query) ||
-      customer.idNumber?.toLowerCase().includes(query) ||
-      customer._id?.toLowerCase().includes(query);
-
-    // Overdue filter
-    if (statusFilter === "overdue") {
-      return matchesSearch && isOverdueLoan(customer);
+      case "last2": {
+        const twoMonthsAgo = new Date(now);
+        twoMonthsAgo.setMonth(now.getMonth() - 2);
+        const startDate = new Date(twoMonthsAgo.getFullYear(), twoMonthsAgo.getMonth(), 1);
+        matchesMonth = joinDate >= startDate && joinDate <= now;
+        break;
+      }
+      case "last3": {
+        const threeMonthsAgo = new Date(now);
+        threeMonthsAgo.setMonth(now.getMonth() - 3);
+        const startDate = new Date(threeMonthsAgo.getFullYear(), threeMonthsAgo.getMonth(), 1);
+        matchesMonth = joinDate >= startDate && joinDate <= now;
+        break;
+      }
+      case "last6": {
+        const sixMonthsAgo = new Date(now);
+        sixMonthsAgo.setMonth(now.getMonth() - 6);
+        const startDate = new Date(sixMonthsAgo.getFullYear(), sixMonthsAgo.getMonth(), 1);
+        matchesMonth = joinDate >= startDate && joinDate <= now;
+        break;
+      }
+      case "year":
+        matchesMonth = joinDate.getFullYear() === currentYear;
+        break;
+      default:
+        matchesMonth = true;
     }
-    
-    // Upcoming filter
-    if (statusFilter === "upcoming") {
-      return matchesSearch && isUpcomingLoan(customer);
-    }
-    
-    // Other status filters
-    const matchesStatus = statusFilter === "all" || customer.status === statusFilter;
-    return matchesSearch && matchesStatus;
-  });
+  }
+
+  return matchesSearch && matchesStatus && matchesMonth;
+});
 
   // Sort customers
   const sortedFilteredCustomers = (() => {
@@ -558,7 +680,9 @@ const exportPDF = () => {
       currency: "INR",
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
-    }).format(amount).replace('₹', '₹ ');
+    })
+      .format(amount)
+      .replace("₹", "₹ ");
   };
 
   // Statistics Calculations
@@ -570,19 +694,38 @@ const exportPDF = () => {
   const overdueCustomers = customers.filter((c) => isOverdueLoan(c));
   const totalCustomers = customers.length;
 
-  const activeAmount = activeCustomers.reduce((sum, c) => sum + c.loanAmount, 0);
-  const closedAmount = closedCustomers.reduce((sum, c) => sum + c.loanAmount, 0);
-  const pendingAmount = pendingCustomers.reduce((sum, c) => sum + c.loanAmount, 0);
-  const defaultedAmount = defaultedCustomers.reduce((sum, c) => sum + c.loanAmount, 0);
+  const activeAmount = activeCustomers.reduce(
+    (sum, c) => sum + c.loanAmount,
+    0,
+  );
+  const closedAmount = closedCustomers.reduce(
+    (sum, c) => sum + c.loanAmount,
+    0,
+  );
+  const pendingAmount = pendingCustomers.reduce(
+    (sum, c) => sum + c.loanAmount,
+    0,
+  );
+  const defaultedAmount = defaultedCustomers.reduce(
+    (sum, c) => sum + c.loanAmount,
+    0,
+  );
   const totalAmount = customers.reduce((sum, c) => sum + c.loanAmount, 0);
+  const upcomingAmount = upcomingCustomers.reduce((sum, c) => sum + c.loanAmount, 0); // ✅ Upcoming total amount
+const overdueAmount = overdueCustomers.reduce((sum, c) => sum + c.loanAmount, 0); // ✅ Overdue total amount
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case "active": return <CheckCircle className="w-4 h-4" />;
-      case "closed": return <CheckCircle className="w-4 h-4" />;
-      case "pending": return <Clock className="w-4 h-4" />;
-      case "defaulted": return <AlertCircle className="w-4 h-4" />;
-      default: return null;
+      case "active":
+        return <CheckCircle className="w-4 h-4" />;
+      case "closed":
+        return <CheckCircle className="w-4 h-4" />;
+      case "pending":
+        return <Clock className="w-4 h-4" />;
+      case "defaulted":
+        return <AlertCircle className="w-4 h-4" />;
+      default:
+        return null;
     }
   };
 
@@ -603,66 +746,201 @@ const exportPDF = () => {
   };
 
 // Mobile Filters Sheet
-const MobileFiltersSheet = () => (
-  <Sheet open={showMobileFilters} onOpenChange={setShowMobileFilters}>
-    <SheetContent side="bottom" className="h-[80vh] rounded-t-2xl">
-      <SheetHeader className="text-left">
-        <SheetTitle className="flex items-center gap-2 text-xl">
-          <SlidersHorizontal className="w-5 h-5" />
-          Filter by Status
-        </SheetTitle>
-        <SheetDescription>
-          Tap on any status to apply filter instantly
-        </SheetDescription>
-      </SheetHeader>
+const MobileFiltersSheet = () => {
+  const [activeTab, setActiveTab] = useState<"status" | "month">("status");
+  const monthFilter = searchParams.get("month") || "all";
 
-      <ScrollArea className="h-[calc(80vh-120px)] pr-4">
-        <div className="space-y-2 py-4">
-          {[
-            { value: "all", label: "All Customers", color: "bg-gray-500", count: totalCustomers },
-            { value: "active", label: "Active", color: "bg-green-500", count: activeCustomers.length },
-            { value: "pending", label: "Pending", color: "bg-yellow-500", count: pendingCustomers.length },
-            { value: "closed", label: "Closed", color: "bg-blue-500", count: closedCustomers.length },
-            { value: "defaulted", label: "Defaulted", color: "bg-red-500", count: defaultedCustomers.length },
-            { value: "upcoming", label: "Upcoming (Last Month)", color: "bg-purple-500", count: upcomingCustomers.length },
-            { value: "overdue", label: "Overdue", color: "bg-orange-500", count: overdueCustomers.length },
-          ].map((status) => (
-            <Button
-              key={status.value}
-              variant="outline"
-              onClick={() => applyMobileFilter(status.value)}
-              className="w-full justify-between h-12"
-            >
-              <div className="flex items-center gap-3">
-                <div className={`w-3 h-3 rounded-full ${status.color}`} />
-                <span>{status.label}</span>
-              </div>
-              <Badge variant="secondary">{status.count}</Badge>
-            </Button>
-          ))}
+  const handleMonthFilterChange = (value: string) => {
+    const params = new URLSearchParams(searchParams);
+    if (value === "all") {
+      params.delete("month");
+    } else {
+      params.set("month", value);
+    }
+    setSearchParams(params);
+    setShowMobileFilters(false);
+  };
+
+  return (
+    <Sheet open={showMobileFilters} onOpenChange={setShowMobileFilters}>
+      <SheetContent side="bottom" className="h-[85vh] rounded-t-2xl">
+        <SheetHeader className="text-left">
+          <SheetTitle className="flex items-center gap-2 text-xl">
+            <SlidersHorizontal className="w-5 h-5" />
+            Filters
+          </SheetTitle>
+          <SheetDescription>
+            Filter customers by status or join month
+          </SheetDescription>
+        </SheetHeader>
+
+        {/* Tabs */}
+        <div className="flex gap-2 mt-4">
+          <Button
+            variant={activeTab === "status" ? "default" : "outline"}
+            size="sm"
+            className="flex-1"
+            onClick={() => setActiveTab("status")}
+          >
+            Status
+          </Button>
+          <Button
+            variant={activeTab === "month" ? "default" : "outline"}
+            size="sm"
+            className="flex-1"
+            onClick={() => setActiveTab("month")}
+          >
+            Month
+          </Button>
         </div>
-      </ScrollArea>
 
-      <SheetFooter className="flex-row gap-2 pt-4 border-t">
-        <Button variant="outline" className="flex-1" onClick={resetMobileFilters}>
-          Reset All
-        </Button>
-        <Button variant="ghost" className="flex-1" onClick={() => setShowMobileFilters(false)}>
-          Close
-        </Button>
-      </SheetFooter>
-    </SheetContent>
-  </Sheet>
-);
+        <ScrollArea className="h-[calc(85vh-200px)] pr-4 mt-4">
+          {/* Status Filters */}
+          {activeTab === "status" && (
+            <div className="space-y-2">
+              {[
+                {
+                  value: "all",
+                  label: "All Customers",
+                  color: "bg-gray-500",
+                  count: totalCustomers,
+                },
+                {
+                  value: "active",
+                  label: "Active",
+                  color: "bg-green-500",
+                  count: activeCustomers.length,
+                },
+                {
+                  value: "pending",
+                  label: "Pending",
+                  color: "bg-yellow-500",
+                  count: pendingCustomers.length,
+                },
+                {
+                  value: "closed",
+                  label: "Closed",
+                  color: "bg-blue-500",
+                  count: closedCustomers.length,
+                },
+                {
+                  value: "defaulted",
+                  label: "Defaulted",
+                  color: "bg-red-500",
+                  count: defaultedCustomers.length,
+                },
+                {
+                  value: "upcoming",
+                  label: "Upcoming (Last Month)",
+                  color: "bg-purple-500",
+                  count: upcomingCustomers.length,
+                },
+                {
+                  value: "overdue",
+                  label: "Overdue",
+                  color: "bg-orange-500",
+                  count: overdueCustomers.length,
+                },
+              ].map((status) => (
+                <Button
+                  key={status.value}
+                  variant={statusFilter === status.value ? "default" : "outline"}
+                  onClick={() => applyMobileFilter(status.value)}
+                  className="w-full justify-between h-12"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={`w-3 h-3 rounded-full ${status.color}`} />
+                    <span>{status.label}</span>
+                  </div>
+                  <Badge variant="secondary">{status.count}</Badge>
+                </Button>
+              ))}
+            </div>
+          )}
 
-  // Desktop Filter Popover
-  const DesktopFilterPopover = () => (
+          {/* Month Filters */}
+          {activeTab === "month" && (
+            <div className="space-y-2">
+              {[
+                { value: "all", label: "All Months" },
+                { value: "current", label: "Current Month" },
+                { value: "last", label: "Last Month" },
+                { value: "last2", label: "Last 2 Months" },
+                { value: "last3", label: "Last 3 Months" },
+                { value: "last6", label: "Last 6 Months" },
+                { value: "year", label: "This Year" },
+              ].map((month) => {
+                const isActive = monthFilter === month.value;
+                return (
+                  <Button
+                    key={month.value}
+                    variant={isActive ? "default" : "outline"}
+                    onClick={() => handleMonthFilterChange(month.value)}
+                    className="w-full justify-start gap-3 h-12"
+                  >
+                    <Calendar className="w-4 h-4" />
+                    <span>{month.label}</span>
+                    {isActive && (
+                      <Badge variant="secondary" className="ml-auto">
+                        Active
+                      </Badge>
+                    )}
+                  </Button>
+                );
+              })}
+            </div>
+          )}
+        </ScrollArea>
+
+        <SheetFooter className="flex-row gap-2 pt-4 border-t">
+          <Button
+            variant="outline"
+            className="flex-1"
+            onClick={() => {
+              resetMobileFilters();
+              handleMonthFilterChange("all");
+            }}
+          >
+            Reset All
+          </Button>
+          <Button
+            variant="ghost"
+            className="flex-1"
+            onClick={() => setShowMobileFilters(false)}
+          >
+            Close
+          </Button>
+        </SheetFooter>
+      </SheetContent>
+    </Sheet>
+  );
+};
+
+// Desktop Filter Popover
+const DesktopFilterPopover = () => {
+  const [monthFilter, setMonthFilter] = useState(() => {
+    return searchParams.get("month") || "all";
+  });
+
+  const handleMonthFilterChange = (value: string) => {
+    setMonthFilter(value);
+    const params = new URLSearchParams(searchParams);
+    if (value === "all") {
+      params.delete("month");
+    } else {
+      params.set("month", value);
+    }
+    setSearchParams(params);
+    setFilterPopoverOpen(false);
+  };
+
+  return (
     <Popover open={filterPopoverOpen} onOpenChange={setFilterPopoverOpen}>
       <PopoverTrigger asChild>
         <Button
           variant="outline"
           size="icon"
-          className={`h-11 w-11 relative ${getActiveFilterCount() > 0 ? 'border-primary' : ''}`}
+          className={`h-11 w-11 relative ${getActiveFilterCount() > 0 ? "border-primary" : ""}`}
         >
           <Filter className="w-4 h-4" />
           {getActiveFilterCount() > 0 && (
@@ -672,55 +950,189 @@ const MobileFiltersSheet = () => (
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-72 p-0" align="end">
+      <PopoverContent className="w-80 p-0" align="end">
         <div className="p-4 border-b">
-          <h4 className="font-semibold">Filter by Status</h4>
-          <p className="text-xs text-muted-foreground">Select status to filter customers</p>
-        </div>
-        
-        <div className="p-4 space-y-2">
-          {[
-            { value: "all", label: "All Customers", color: "bg-gray-500", count: totalCustomers },
-            { value: "active", label: "Active", color: "bg-green-500", count: activeCustomers.length },
-            { value: "pending", label: "Pending", color: "bg-yellow-500", count: pendingCustomers.length },
-            { value: "closed", label: "Closed", color: "bg-blue-500", count: closedCustomers.length },
-            { value: "defaulted", label: "Defaulted", color: "bg-red-500", count: defaultedCustomers.length },
-            { value: "upcoming", label: "Upcoming (Last Month)", color: "bg-purple-500", count: upcomingCustomers.length },
-            { value: "overdue", label: "Overdue", color: "bg-orange-500", count: overdueCustomers.length },
-          ].map((status) => (
-            <Button
-              key={status.value}
-              variant={statusFilter === status.value ? "default" : "ghost"}
-              size="sm"
-              onClick={() => updateParams("status", status.value)}
-              className="w-full justify-between"
-            >
-              <div className="flex items-center gap-2">
-                <div className={`w-2 h-2 rounded-full ${status.color}`} />
-                <span>{status.label}</span>
-              </div>
-              <Badge variant="secondary" className="text-xs">
-                {status.count}
-              </Badge>
-            </Button>
-          ))}
+          <h4 className="font-semibold">Filter Customers</h4>
+          <p className="text-xs text-muted-foreground">
+            Filter by status or join month
+          </p>
         </div>
 
-        {statusFilter !== "all" && (
-          <div className="p-3 border-t bg-muted/50">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => updateParams("status", "all")}
-              className="w-full"
-            >
-              Clear Filter
-            </Button>
+        <div className="p-4 space-y-4">
+          {/* Status Filter */}
+          <div>
+            <p className="text-xs font-medium text-muted-foreground mb-2">By Status</p>
+            <div className="space-y-1.5">
+              {[
+                {
+                  value: "all",
+                  label: "All Customers",
+                  color: "bg-gray-500",
+                  count: totalCustomers,
+                },
+                {
+                  value: "active",
+                  label: "Active",
+                  color: "bg-green-500",
+                  count: activeCustomers.length,
+                },
+                {
+                  value: "pending",
+                  label: "Pending",
+                  color: "bg-yellow-500",
+                  count: pendingCustomers.length,
+                },
+                {
+                  value: "closed",
+                  label: "Closed",
+                  color: "bg-blue-500",
+                  count: closedCustomers.length,
+                },
+                {
+                  value: "defaulted",
+                  label: "Defaulted",
+                  color: "bg-red-500",
+                  count: defaultedCustomers.length,
+                },
+                {
+                  value: "upcoming",
+                  label: "Upcoming (Last Month)",
+                  color: "bg-purple-500",
+                  count: upcomingCustomers.length,
+                },
+                {
+                  value: "overdue",
+                  label: "Overdue",
+                  color: "bg-orange-500",
+                  count: overdueCustomers.length,
+                },
+              ].map((status) => (
+                <Button
+                  key={status.value}
+                  variant={statusFilter === status.value ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => updateParams("status", status.value)}
+                  className="w-full justify-between"
+                >
+                  <div className="flex items-center gap-2">
+                    <div className={`w-2 h-2 rounded-full ${status.color}`} />
+                    <span>{status.label}</span>
+                  </div>
+                  <Badge variant="secondary" className="text-xs">
+                    {status.count}
+                  </Badge>
+                </Button>
+              ))}
+            </div>
           </div>
-        )}
+
+          <Separator />
+
+          {/* Month Filter */}
+          <div>
+            <p className="text-xs font-medium text-muted-foreground mb-2">By Join Month</p>
+            <div className="space-y-1.5">
+              {[
+                { value: "all", label: "All Months" },
+                { value: "current", label: "Current Month" },
+                { value: "last", label: "Last Month" },
+                { value: "last2", label: "Last 2 Months" },
+                { value: "last3", label: "Last 3 Months" },
+                { value: "last6", label: "Last 6 Months" },
+                { value: "year", label: "This Year" },
+              ].map((month) => {
+                const currentMonthFilter = searchParams.get("month") || "all";
+                const isActive = currentMonthFilter === month.value;
+                return (
+                  <Button
+                    key={month.value}
+                    variant={isActive ? "default" : "ghost"}
+                    size="sm"
+                    onClick={() => handleMonthFilterChange(month.value)}
+                    className="w-full justify-start gap-2"
+                  >
+                    <Calendar className="w-3.5 h-3.5" />
+                    <span>{month.label}</span>
+                    {isActive && (
+                      <Badge variant="secondary" className="text-xs ml-auto">
+                        Active
+                      </Badge>
+                    )}
+                  </Button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+       {(statusFilter !== "all" || searchQuery || searchParams.get("month") !== "all") && (
+  <div className="flex flex-wrap items-center gap-2 pt-2">
+    <span className="text-xs text-muted-foreground">
+      Active filters:
+    </span>
+    {statusFilter !== "all" && (
+      <Badge variant="secondary" className="gap-1">
+        Status: {statusFilter === "upcoming" ? "Upcoming" : statusFilter === "overdue" ? "Overdue" : statusFilter}
+        <button onClick={() => updateParams("status", "all")} className="ml-1 hover:text-destructive">
+          <XCircleIcon className="w-3 h-3" />
+        </button>
+      </Badge>
+    )}
+    {searchParams.get("month") !== "all" && searchParams.get("month") !== null && (
+      <Badge variant="secondary" className="gap-1">
+        Month: {(() => {
+          const month = searchParams.get("month");
+          const labels: Record<string, string> = {
+            current: "Current Month",
+            last: "Last Month",
+            last2: "Last 2 Months",
+            last3: "Last 3 Months",
+            last6: "Last 6 Months",
+            year: "This Year",
+          };
+          return labels[month || ""] || month;
+        })()}
+        <button 
+          onClick={() => {
+            const params = new URLSearchParams(searchParams);
+            params.delete("month");
+            setSearchParams(params);
+          }} 
+          className="ml-1 hover:text-destructive"
+        >
+          <XCircleIcon className="w-3 h-3" />
+        </button>
+      </Badge>
+    )}
+    
+    {searchQuery && (
+      <Badge variant="secondary" className="gap-1">
+        Search: "{searchQuery}"
+        <button onClick={clearSearch} className="ml-1 hover:text-destructive">
+          <XCircleIcon className="w-3 h-3" />
+        </button>
+      </Badge>
+    )}
+    <Button
+      variant="ghost"
+      size="sm"
+      className="h-7 text-xs"
+      onClick={() => {
+        updateParams("status", "all");
+        updateParams("search", "");
+        const params = new URLSearchParams(searchParams);
+        params.delete("month");
+        setSearchParams(params);
+      }}
+    >
+      Clear all
+    </Button>
+  </div>
+)}
       </PopoverContent>
     </Popover>
   );
+};
 
   // Responsive Search Component
   const ResponsiveSearch = () => {
@@ -813,8 +1225,12 @@ const MobileFiltersSheet = () => (
               )}
               <div className="flex-1">
                 <div>
-                  <h3 className="font-semibold text-foreground">{customer.name}</h3>
-                  <p className="text-sm text-muted-foreground">{customer.phone}</p>
+                  <h3 className="font-semibold text-foreground">
+                    {customer.name}
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    {customer.phone}
+                  </p>
                 </div>
               </div>
             </div>
@@ -830,7 +1246,8 @@ const MobileFiltersSheet = () => (
           {isUpcomingView && daysUntilEnd !== null && daysUntilEnd >= 0 && (
             <div className="mb-3 p-2 bg-purple-50 rounded-lg border border-purple-200">
               <p className="text-xs text-purple-700 font-medium">
-                ⏰ Loan ends in {daysUntilEnd} days ({formatDate(getLoanEndDate(customer)?.toISOString() || "")})
+                ⏰ Loan ends in {daysUntilEnd} days (
+                {formatDate(getLoanEndDate(customer)?.toISOString() || "")})
               </p>
             </div>
           )}
@@ -838,7 +1255,8 @@ const MobileFiltersSheet = () => (
           {isOverdueView && daysOverdue !== null && daysOverdue > 0 && (
             <div className="mb-3 p-2 bg-orange-50 rounded-lg border border-orange-200">
               <p className="text-xs text-orange-700 font-medium">
-                ⚠️ Overdue by {daysOverdue} days (Loan ended on {formatDate(getLoanEndDate(customer)?.toISOString() || "")})
+                ⚠️ Overdue by {daysOverdue} days (Loan ended on{" "}
+                {formatDate(getLoanEndDate(customer)?.toISOString() || "")})
               </p>
             </div>
           )}
@@ -848,7 +1266,9 @@ const MobileFiltersSheet = () => (
               <p className="text-xs text-muted-foreground mb-1">Loan Amount</p>
               <div className="flex items-center">
                 <IndianRupee className="w-4 h-4 mr-1" />
-                <span className="font-bold text-base">{formatCurrency(customer.loanAmount)}</span>
+                <span className="font-bold text-base">
+                  {formatCurrency(customer.loanAmount)}
+                </span>
               </div>
             </div>
             <div>
@@ -966,58 +1386,73 @@ const MobileFiltersSheet = () => (
           </div>
 
           {/* Statistics Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-3 sm:gap-4">
+          <div className="grid grid-rows-1 sm:grid-rows-2 lg:grid-rows-7 gap-3 sm:gap-4">
             {loading ? (
               [...Array(7)].map((_, i) => <StatCardSkeleton key={i} />)
             ) : (
               <>
-                <Card className="border-l-4 border-l-green-500 hover:shadow-md transition-shadow">
-                  <CardContent className="p-4 sm:p-6">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900/30">
-                        <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-green-600 dark:text-green-400" />
+                <Card className="border-l-4 border-l-green-500 hover:shadow-md transition-shadow h-fit">
+                  <CardContent className="p-3 sm:p-4">
+                    <div className="flex items-center justify-between gap-4">
+                      {/* Icon */}
+                      <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900/30 flex-shrink-0">
+                        <CreditCard className="w-5 h-5 text-green-600 dark:text-green-400" />{" "}
                       </div>
-                      <Badge variant="outline" className="bg-green-50 text-green-700 text-xs">
-                        +{((activeCustomers.length / totalCustomers) * 100).toFixed(1)}%
-                      </Badge>
-                    </div>
-                    <p className="text-xs sm:text-sm text-muted-foreground">Active Loans</p>
-                    <div className="flex items-end justify-between mt-2">
-                      <h3 className="text-xl sm:text-2xl font-bold">{activeCustomers.length}</h3>
-                      <p className="text-xs sm:text-sm text-green-600 font-medium truncate ml-2">
+                      {/* Title */}
+                      <p className="text-sm font-medium text-muted-foreground whitespace-nowrap">
+                        Active Loans
+                      </p>
+                      {/* Count */}
+                      <h3 className="text-xl font-bold whitespace-nowrap">
+                        {activeCustomers.length}
+                      </h3>
+                      {/* Amount */}
+                      <p className="text-sm font-medium text-green-600 whitespace-nowrap">
                         {formatCurrency(activeAmount)}
                       </p>
                     </div>
                   </CardContent>
                 </Card>
 
-                <Card className="border-l-4 border-l-blue-500 hover:shadow-md transition-shadow">
-                  <CardContent className="p-4 sm:p-6">
-                    <div className="flex items-center justify-between mb-2">
+                <Card className="border-l-4 border-l-blue-500 hover:shadow-md transition-shadow h-fit">
+                  <CardContent className="p-3 sm:p-4">
+                    <div className="flex items-center justify-between gap-4">
+                      {/* Icon */}
                       <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
                         <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 dark:text-blue-400" />
                       </div>
-                    </div>
-                    <p className="text-xs sm:text-sm text-muted-foreground">Closed Loans</p>
-                    <div className="flex items-end justify-between mt-2">
-                      <h3 className="text-xl sm:text-2xl font-bold">{closedCustomers.length}</h3>
-                      <p className="text-xs sm:text-sm text-blue-600 font-medium truncate ml-2">
+                      {/* Title */}
+                      <p className="text-sm font-medium text-muted-foreground whitespace-nowrap">
+                        Closed Loans
+                      </p>
+                      {/* Count */}
+                      <h3 className="text-xl font-bold whitespace-nowrap">
+                        {closedCustomers.length}
+                      </h3>
+                      {/* Amount */}
+                      <p className="text-sm font-medium text-blue-600 whitespace-nowrap">
                         {formatCurrency(closedAmount)}
                       </p>
                     </div>
                   </CardContent>
                 </Card>
 
-                <Card className="border-l-4 border-l-yellow-500 hover:shadow-md transition-shadow">
-                  <CardContent className="p-4 sm:p-6">
-                    <div className="flex items-center justify-between mb-2">
+                <Card className="border-l-4 border-l-yellow-500 hover:shadow-md transition-shadow h-fit">
+                  <CardContent className="p-3 sm:p-4">
+                    <div className="flex items-center justify-between gap-4">
+                      {/* Icon */}
                       <div className="p-2 rounded-lg bg-yellow-100 dark:bg-yellow-900/30">
-                        <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-600 dark:text-yellow-400" />
+                        <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-600 dark:text-yellow-400" />{" "}
                       </div>
-                    </div>
-                    <p className="text-xs sm:text-sm text-muted-foreground">Pending Loans</p>
-                    <div className="flex items-end justify-between mt-2">
-                      <h3 className="text-xl sm:text-2xl font-bold">{pendingCustomers.length}</h3>
+                      {/* Title */}
+                      <p className="text-sm font-medium text-muted-foreground whitespace-nowrap">
+                        Pending Loans
+                      </p>
+                      {/* Count */}
+                      <h3 className="text-xl font-bold whitespace-nowrap">
+                        {pendingCustomers.length}
+                      </h3>
+                      {/* Amount */}
                       <p className="text-xs sm:text-sm text-yellow-600 font-medium truncate ml-2">
                         {formatCurrency(pendingAmount)}
                       </p>
@@ -1025,19 +1460,23 @@ const MobileFiltersSheet = () => (
                   </CardContent>
                 </Card>
 
-                <Card className="border-l-4 border-l-red-500 hover:shadow-md transition-shadow">
-                  <CardContent className="p-4 sm:p-6">
-                    <div className="flex items-center justify-between mb-2">
+                <Card className="border-l-4 border-l-red-500 hover:shadow-md transition-shadow h-fit">
+                  <CardContent className="p-3 sm:p-4">
+                    <div className="flex items-center justify-between gap-4">
+                      {/* Icon */}
                       <div className="p-2 rounded-lg bg-red-100 dark:bg-red-900/30">
-                        <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-red-600 dark:text-red-400" />
+                        <Bell className="w-4 h-4 sm:w-5 sm:h-5 text-red-600 dark:text-red-400" />
                       </div>
-                      <Badge variant="outline" className="bg-red-50 text-red-700 text-xs">
-                        Alert
-                      </Badge>
-                    </div>
-                    <p className="text-xs sm:text-sm text-muted-foreground">Defaulted Loans</p>
-                    <div className="flex items-end justify-between mt-2">
-                      <h3 className="text-xl sm:text-2xl font-bold">{defaultedCustomers.length}</h3>
+                      {/* Title */}
+                      <p className="text-sm font-medium text-muted-foreground whitespace-nowrap">
+                        Defaulted Loans
+                      </p>
+                      {/* Count */}
+                      <h3 className="text-xl font-bold whitespace-nowrap">
+                        {defaultedCustomers.length}
+                      </h3>
+
+                      {/* Amount */}
                       <p className="text-xs sm:text-sm text-red-600 font-medium truncate ml-2">
                         {formatCurrency(defaultedAmount)}
                       </p>
@@ -1045,16 +1484,23 @@ const MobileFiltersSheet = () => (
                   </CardContent>
                 </Card>
 
-                <Card className="border-l-4 border-l-purple-500 hover:shadow-md transition-shadow">
-                  <CardContent className="p-4 sm:p-6">
-                    <div className="flex items-center justify-between mb-2">
+                <Card className="border-l-4 border-l-purple-500 hover:shadow-md transition-shadow h-fit">
+                  <CardContent className="p-3 sm:p-4">
+                    <div className="flex items-center justify-between gap-4">
+                      {/* Icon */}
                       <div className="p-2 rounded-lg bg-purple-100 dark:bg-purple-900/30">
                         <Wallet className="w-4 h-4 sm:w-5 sm:h-5 text-purple-600 dark:text-purple-400" />
                       </div>
-                    </div>
-                    <p className="text-xs sm:text-sm text-muted-foreground">Total Portfolio</p>
-                    <div className="flex items-end justify-between mt-2">
-                      <h3 className="text-xl sm:text-2xl font-bold">{totalCustomers}</h3>
+                      <p className="text-xs sm:text-sm text-muted-foreground">
+                        Total Portfolio
+                      </p>
+
+                      {/* Count */}
+                      <h3 className="text-xl font-bold whitespace-nowrap">
+                        {totalCustomers}
+                      </h3>
+
+                      {/* Amount */}
                       <p className="text-xs sm:text-sm font-medium truncate ml-2">
                         {formatCurrency(totalAmount)}
                       </p>
@@ -1062,35 +1508,53 @@ const MobileFiltersSheet = () => (
                   </CardContent>
                 </Card>
 
-                <Card className="border-l-4 border-l-orange-500 bg-orange-50/30 hover:shadow-md transition-shadow">
-                  <CardContent className="p-4 sm:p-6">
-                    <div className="flex items-center justify-between mb-2">
+                <Card className="border-l-4 border-l-orange-500 bg-orange-50/30 hover:shadow-md transition-shadow h-fit">
+                  <CardContent className="p-3 sm:p-4">
+                    <div className="flex items-center justify-between gap-4">
+                      {/* Icon */}
                       <div className="p-2 rounded-lg bg-orange-100 dark:bg-orange-900/30">
                         <Calendar className="w-4 h-4 sm:w-5 sm:h-5 text-orange-600 dark:text-orange-400" />
                       </div>
-                    </div>
-                    <p className="text-xs sm:text-sm text-muted-foreground">Upcoming</p>
-                    <div className="flex items-end justify-between mt-2">
-                      <h3 className="text-xl sm:text-2xl font-bold text-orange-600">{upcomingCustomers.length}</h3>
+
+                      {/* Title */}
+                      <p className="text-xs sm:text-sm text-muted-foreground">
+                        Upcoming
+                      </p>
+
+                      {/* Count */}
+                      <h3 className="text-xl font-bold whitespace-nowrap">
+                        {upcomingCustomers.length}
+                      </h3>
+
+                      {/* Amount */}
                       <p className="text-xs sm:text-sm text-orange-600 font-medium truncate ml-2">
-                        Ending soon
+                         {formatCurrency(upcomingAmount)}
                       </p>
                     </div>
                   </CardContent>
                 </Card>
 
-                <Card className="border-l-4 border-l-red-700 bg-red-50/30 hover:shadow-md transition-shadow">
-                  <CardContent className="p-4 sm:p-6">
-                    <div className="flex items-center justify-between mb-2">
+                <Card className="border-l-4 border-l-red-700 bg-red-50/30 hover:shadow-md transition-shadow h-fit">
+                  <CardContent className="p-3 sm:p-4">
+                    <div className="flex items-center justify-between gap-4">
+                      {/* Icon */}
                       <div className="p-2 rounded-lg bg-red-100 dark:bg-red-900/30">
                         <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-red-700 dark:text-red-400" />
                       </div>
-                    </div>
-                    <p className="text-xs sm:text-sm text-muted-foreground">Overdue</p>
-                    <div className="flex items-end justify-between mt-2">
-                      <h3 className="text-xl sm:text-2xl font-bold text-red-700">{overdueCustomers.length}</h3>
+
+                      {/* Title */}
+                      <p className="text-xs sm:text-sm text-muted-foreground">
+                        Overdue
+                      </p>
+
+                      {/* Count */}
+                      <h3 className="text-xl font-bold whitespace-nowrap">
+                        {overdueCustomers.length}
+                      </h3>
+
+                      {/* Amount */}
                       <p className="text-xs sm:text-sm text-red-700 font-medium truncate ml-2">
-                        Expired loans
+                       {formatCurrency(overdueAmount)}
                       </p>
                     </div>
                   </CardContent>
@@ -1105,12 +1569,12 @@ const MobileFiltersSheet = () => (
               <div className="space-y-4">
                 <div className="flex gap-2">
                   <ResponsiveSearch />
-                  
+
                   {isMobile ? (
                     <Button
                       variant="outline"
                       size="icon"
-                      className={`h-11 w-11 flex-shrink-0 ${getActiveFilterCount() > 0 ? 'border-primary' : ''}`}
+                      className={`h-11 w-11 flex-shrink-0 ${getActiveFilterCount() > 0 ? "border-primary" : ""}`}
                       onClick={() => setShowMobileFilters(true)}
                     >
                       <Filter className="w-4 h-4" />
@@ -1127,11 +1591,21 @@ const MobileFiltersSheet = () => (
 
                 {(statusFilter !== "all" || searchQuery) && (
                   <div className="flex flex-wrap items-center gap-2 pt-2">
-                    <span className="text-xs text-muted-foreground">Active filters:</span>
+                    <span className="text-xs text-muted-foreground">
+                      Active filters:
+                    </span>
                     {statusFilter !== "all" && (
                       <Badge variant="secondary" className="gap-1">
-                        Status: {statusFilter === "upcoming" ? "Upcoming" : statusFilter === "overdue" ? "Overdue" : statusFilter}
-                        <button onClick={() => updateParams("status", "all")} className="ml-1 hover:text-destructive">
+                        Status:{" "}
+                        {statusFilter === "upcoming"
+                          ? "Upcoming"
+                          : statusFilter === "overdue"
+                            ? "Overdue"
+                            : statusFilter}
+                        <button
+                          onClick={() => updateParams("status", "all")}
+                          className="ml-1 hover:text-destructive"
+                        >
                           <XCircleIcon className="w-3 h-3" />
                         </button>
                       </Badge>
@@ -1139,7 +1613,10 @@ const MobileFiltersSheet = () => (
                     {searchQuery && (
                       <Badge variant="secondary" className="gap-1">
                         Search: "{searchQuery}"
-                        <button onClick={clearSearch} className="ml-1 hover:text-destructive">
+                        <button
+                          onClick={clearSearch}
+                          className="ml-1 hover:text-destructive"
+                        >
                           <XCircleIcon className="w-3 h-3" />
                         </button>
                       </Badge>
@@ -1207,7 +1684,9 @@ const MobileFiltersSheet = () => (
                 <div className="mx-auto w-24 h-24 rounded-full bg-muted/50 flex items-center justify-center mb-6">
                   <Users className="w-12 h-12 text-muted-foreground" />
                 </div>
-                <h3 className="text-lg font-semibold mb-2">No customers found</h3>
+                <h3 className="text-lg font-semibold mb-2">
+                  No customers found
+                </h3>
                 <p className="text-muted-foreground mb-6">
                   {searchQuery
                     ? "Try adjusting your search or filter"
@@ -1234,18 +1713,35 @@ const MobileFiltersSheet = () => (
                   <Table>
                     <TableHeader>
                       <TableRow className="bg-muted/30 hover:bg-muted/30">
-                        <TableHead className="font-semibold w-[200px]">Customer</TableHead>
-                        <TableHead className="font-semibold w-[180px]">Contact & ID</TableHead>
-                        <TableHead className="font-semibold w-[180px]">Loan Details</TableHead>
-                        <TableHead className="font-semibold w-[180px]">Financials</TableHead>
-                        <TableHead className="font-semibold w-[120px]">Status</TableHead>
-                        <TableHead className="font-semibold w-[140px]">Date</TableHead>
-                        {(statusFilter === "upcoming" || statusFilter === "overdue") && (
+                        <TableHead className="font-semibold w-[200px]">
+                          Customer
+                        </TableHead>
+                        <TableHead className="font-semibold w-[180px]">
+                          Contact & ID
+                        </TableHead>
+                        <TableHead className="font-semibold w-[180px]">
+                          Loan Details
+                        </TableHead>
+                        <TableHead className="font-semibold w-[180px]">
+                          Financials
+                        </TableHead>
+                        <TableHead className="font-semibold w-[120px]">
+                          Status
+                        </TableHead>
+                        <TableHead className="font-semibold w-[140px]">
+                          Date
+                        </TableHead>
+                        {(statusFilter === "upcoming" ||
+                          statusFilter === "overdue") && (
                           <TableHead className="font-semibold w-[100px]">
-                            {statusFilter === "upcoming" ? "Days Left" : "Overdue Days"}
+                            {statusFilter === "upcoming"
+                              ? "Days Left"
+                              : "Overdue Days"}
                           </TableHead>
                         )}
-                        <TableHead className="font-semibold w-[100px] text-right">Actions</TableHead>
+                        <TableHead className="font-semibold w-[100px] text-right">
+                          Actions
+                        </TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -1253,12 +1749,14 @@ const MobileFiltersSheet = () => (
                         const calc = calculateDirectInterest(customer);
                         const daysUntilEnd = getDaysUntilEnd(customer);
                         const daysOverdue = getDaysOverdue(customer);
-                        
+
                         return (
                           <TableRow
                             key={customer._id}
                             className="hover:bg-muted/10 border-border/50 group cursor-pointer transition-colors"
-                            onClick={() => navigate(`/customers/${customer._id}`)}
+                            onClick={() =>
+                              navigate(`/customers/${customer._id}`)
+                            }
                           >
                             <TableCell className="w-[200px]">
                               <div className="flex items-center gap-3">
@@ -1288,7 +1786,9 @@ const MobileFiltersSheet = () => (
                               <div className="space-y-2">
                                 <div className="flex items-center gap-2 truncate">
                                   <Phone className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                                  <span className="font-medium truncate">{customer.phone}</span>
+                                  <span className="font-medium truncate">
+                                    {customer.phone}
+                                  </span>
                                 </div>
                                 <div className="flex items-center gap-2 truncate">
                                   <Badge
@@ -1314,7 +1814,9 @@ const MobileFiltersSheet = () => (
                                 </div>
                                 <div className="space-y-1">
                                   <div className="text-sm">
-                                    <span className="font-medium">{customer.interestRate}% Interest</span>
+                                    <span className="font-medium">
+                                      {customer.interestRate}% Interest
+                                    </span>
                                   </div>
                                   <div className="text-xs text-muted-foreground">
                                     {getTermDuration(customer)}
@@ -1329,7 +1831,9 @@ const MobileFiltersSheet = () => (
                             <TableCell className="w-[180px]">
                               <div className="space-y-2">
                                 <div>
-                                  <p className="text-xs text-muted-foreground">Total Payable</p>
+                                  <p className="text-xs text-muted-foreground">
+                                    Total Payable
+                                  </p>
                                   <div className="flex items-center gap-2">
                                     <IndianRupee className="w-4 h-4 flex-shrink-0" />
                                     <p className="font-semibold truncate">
@@ -1338,7 +1842,9 @@ const MobileFiltersSheet = () => (
                                   </div>
                                 </div>
                                 <div>
-                                  <p className="text-xs text-muted-foreground">Monthly EMI</p>
+                                  <p className="text-xs text-muted-foreground">
+                                    Monthly EMI
+                                  </p>
                                   <div className="flex items-center gap-2">
                                     <IndianRupee className="w-4 h-4 text-green-600 flex-shrink-0" />
                                     <p className="font-semibold text-green-600 truncate">
@@ -1362,14 +1868,24 @@ const MobileFiltersSheet = () => (
                                   variant="outline"
                                 >
                                   {getStatusIcon(customer.status)}
-                                  <span className="truncate">{customer.status}</span>
+                                  <span className="truncate">
+                                    {customer.status}
+                                  </span>
                                 </Badge>
-                                {(statusFilter === "upcoming" && daysUntilEnd !== null && daysUntilEnd >= 0) && (
-                                  <Badge className="bg-purple-500 text-white text-xs w-fit">⚡ {daysUntilEnd}d left</Badge>
-                                )}
-                                {(statusFilter === "overdue" && daysOverdue !== null && daysOverdue > 0) && (
-                                  <Badge className="bg-orange-500 text-white text-xs w-fit">🔥 {daysOverdue}d overdue</Badge>
-                                )}
+                                {statusFilter === "upcoming" &&
+                                  daysUntilEnd !== null &&
+                                  daysUntilEnd >= 0 && (
+                                    <Badge className="bg-purple-500 text-white text-xs w-fit">
+                                      ⚡ {daysUntilEnd}d left
+                                    </Badge>
+                                  )}
+                                {statusFilter === "overdue" &&
+                                  daysOverdue !== null &&
+                                  daysOverdue > 0 && (
+                                    <Badge className="bg-orange-500 text-white text-xs w-fit">
+                                      🔥 {daysOverdue}d overdue
+                                    </Badge>
+                                  )}
                               </div>
                             </TableCell>
 
@@ -1382,18 +1898,29 @@ const MobileFiltersSheet = () => (
                               </div>
                             </TableCell>
 
-                            {(statusFilter === "upcoming" || statusFilter === "overdue") && (
+                            {(statusFilter === "upcoming" ||
+                              statusFilter === "overdue") && (
                               <TableCell className="w-[100px]">
-                                {statusFilter === "upcoming" && daysUntilEnd !== null && daysUntilEnd >= 0 && (
-                                  <Badge variant="outline" className="bg-purple-50 text-purple-700">
-                                    {daysUntilEnd} days
-                                  </Badge>
-                                )}
-                                {statusFilter === "overdue" && daysOverdue !== null && daysOverdue > 0 && (
-                                  <Badge variant="outline" className="bg-orange-50 text-orange-700">
-                                    {daysOverdue} days
-                                  </Badge>
-                                )}
+                                {statusFilter === "upcoming" &&
+                                  daysUntilEnd !== null &&
+                                  daysUntilEnd >= 0 && (
+                                    <Badge
+                                      variant="outline"
+                                      className="bg-purple-50 text-purple-700"
+                                    >
+                                      {daysUntilEnd} days
+                                    </Badge>
+                                  )}
+                                {statusFilter === "overdue" &&
+                                  daysOverdue !== null &&
+                                  daysOverdue > 0 && (
+                                    <Badge
+                                      variant="outline"
+                                      className="bg-orange-50 text-orange-700"
+                                    >
+                                      {daysOverdue} days
+                                    </Badge>
+                                  )}
                               </TableCell>
                             )}
 
@@ -1408,7 +1935,9 @@ const MobileFiltersSheet = () => (
                                         className="h-9 w-9 hover:bg-primary/10 flex-shrink-0"
                                         onClick={(e) => {
                                           e.stopPropagation();
-                                          navigate(`/customers/${customer._id}`);
+                                          navigate(
+                                            `/customers/${customer._id}`,
+                                          );
                                         }}
                                       >
                                         <Eye className="w-4 h-4" />
@@ -1429,7 +1958,9 @@ const MobileFiltersSheet = () => (
                                         className="h-9 w-9 hover:bg-primary/10 flex-shrink-0"
                                         onClick={(e) => {
                                           e.stopPropagation();
-                                          navigate(`/customer-form/${customer._id}`);
+                                          navigate(
+                                            `/customer-form/${customer._id}`,
+                                          );
                                         }}
                                       >
                                         <Edit className="w-4 h-4" />
@@ -1454,17 +1985,28 @@ const MobileFiltersSheet = () => (
                                       <MoreHorizontal className="w-4 h-4" />
                                     </Button>
                                   </DropdownMenuTrigger>
-                                  <DropdownMenuContent align="end" className="w-48">
-                                    <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                  <DropdownMenuContent
+                                    align="end"
+                                    className="w-48"
+                                  >
+                                    <DropdownMenuLabel>
+                                      Actions
+                                    </DropdownMenuLabel>
                                     <DropdownMenuSeparator />
                                     <DropdownMenuItem
-                                      onClick={() => navigate(`/customers/${customer._id}`)}
+                                      onClick={() =>
+                                        navigate(`/customers/${customer._id}`)
+                                      }
                                     >
                                       <Eye className="w-4 h-4 mr-2" />
                                       View Details
                                     </DropdownMenuItem>
                                     <DropdownMenuItem
-                                      onClick={() => navigate(`/customer-form/${customer._id}`)}
+                                      onClick={() =>
+                                        navigate(
+                                          `/customer-form/${customer._id}`,
+                                        )
+                                      }
                                     >
                                       <Edit className="w-4 h-4 mr-2" />
                                       Edit Profile
