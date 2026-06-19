@@ -26,6 +26,7 @@ interface DashboardLayoutProps {
 const navItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/" },
   { icon: Users, label: "Customers", path: "/customers" },
+  { icon: FileClock , label: "Intrest", path: "/interest-analytics" }, 
   { icon: CreditCard, label: "Loans", path: "/loans" },
   { icon: Wallet, label: "Payments", path: "/payments" },
    { icon: Calculator , label: "Calculator", path: "/calculator" }, 

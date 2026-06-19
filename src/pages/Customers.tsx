@@ -1199,122 +1199,138 @@ const DesktopFilterPopover = () => {
     </TableRow>
   );
 
-  // Mobile Card View
-  const MobileCustomerCard = ({ customer }: { customer: Loan }) => {
-    const calc = calculateDirectInterest(customer);
-    const daysUntilEnd = getDaysUntilEnd(customer);
-    const daysOverdue = getDaysOverdue(customer);
-    const isUpcomingView = statusFilter === "upcoming";
-    const isOverdueView = statusFilter === "overdue";
+// Mobile Card View - Modified version
+const MobileCustomerCard = ({ customer }: { customer: Loan }) => {
+  const calc = calculateDirectInterest(customer);
+  const daysUntilEnd = getDaysUntilEnd(customer);
+  const daysOverdue = getDaysOverdue(customer);
+  const isUpcomingView = statusFilter === "upcoming";
+  const isOverdueView = statusFilter === "overdue";
 
-    return (
-      <Card className="mb-4 hover:shadow-lg transition-shadow duration-300 border-border/60">
-        <CardContent className="p-4">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-3">
-              {customer.customerImage?.url ? (
-                <img
-                  src={customer.customerImage.url}
-                  alt={customer.name}
-                  className="h-12 w-12 rounded-xl object-cover border-2 border-border"
-                />
-              ) : (
-                <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20 flex items-center justify-center">
-                  <User className="w-6 h-6 text-primary" />
-                </div>
-              )}
-              <div className="flex-1">
-                <div>
-                  <h3 className="font-semibold text-foreground">
-                    {customer.name}
-                  </h3>
-                  <p className="text-sm text-muted-foreground">
-                    {customer.phone}
-                  </p>
-                </div>
-              </div>
-            </div>
-            <Badge
-              className={`flex items-center gap-1 px-2 py-1 text-xs ${statusStyles[customer.status]}`}
-              variant="outline"
-            >
-              {getStatusIcon(customer.status)}
-              <span className="capitalize">{customer.status.charAt(0)}</span>
-            </Badge>
-          </div>
-
-          {isUpcomingView && daysUntilEnd !== null && daysUntilEnd >= 0 && (
-            <div className="mb-3 p-2 bg-purple-50 rounded-lg border border-purple-200">
-              <p className="text-xs text-purple-700 font-medium">
-                ⏰ Loan ends in {daysUntilEnd} days (
-                {formatDate(getLoanEndDate(customer)?.toISOString() || "")})
-              </p>
-            </div>
-          )}
-
-          {isOverdueView && daysOverdue !== null && daysOverdue > 0 && (
-            <div className="mb-3 p-2 bg-orange-50 rounded-lg border border-orange-200">
-              <p className="text-xs text-orange-700 font-medium">
-                ⚠️ Overdue by {daysOverdue} days (Loan ended on{" "}
-                {formatDate(getLoanEndDate(customer)?.toISOString() || "")})
-              </p>
-            </div>
-          )}
-
-          <div className="grid grid-cols-2 gap-3 mb-3">
-            <div>
-              <p className="text-xs text-muted-foreground mb-1">Loan Amount</p>
-              <div className="flex items-center">
-                <IndianRupee className="w-4 h-4 mr-1" />
-                <span className="font-bold text-base">
-                  {formatCurrency(customer.loanAmount)}
-                </span>
-              </div>
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground mb-1">Monthly EMI</p>
-              <div className="flex items-center">
-                <IndianRupee className="w-4 h-4 mr-1 text-green-600" />
-                <span className="font-bold text-base text-green-600">
-                  {formatCurrency(calc.monthlyInstallment)}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1 text-xs text-muted-foreground">
-              <Clock className="w-3.5 h-3.5" />
-              <span>{getTermDuration(customer)}</span>
-            </div>
-            <div className="flex items-center gap-1 text-xs text-muted-foreground">
-              <Calendar className="w-3.5 h-3.5" />
-              <span>{formatDate(customer.joinDate)}</span>
-            </div>
-          </div>
-
-          <div className="flex justify-end gap-2 mt-3 pt-3 border-t">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8"
-              onClick={() => navigate(`/customers/${customer._id}`)}
-            >
-              <Eye className="w-4 h-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8"
-              onClick={() => navigate(`/customer-form/${customer._id}`)}
-            >
-              <Edit className="w-4 h-4" />
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-    );
+  // Handle card click - redirect to customer detail page
+  const handleCardClick = () => {
+    navigate(`/customers/${customer._id}`);
   };
+
+  return (
+    <Card 
+      className="mb-4 hover:shadow-lg transition-shadow duration-300 border-border/60 cursor-pointer"
+      onClick={handleCardClick}
+    >
+      <CardContent className="p-4">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-3">
+            {customer.customerImage?.url ? (
+              <img
+                src={customer.customerImage.url}
+                alt={customer.name}
+                className="h-12 w-12 rounded-xl object-cover border-2 border-border"
+              />
+            ) : (
+              <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20 flex items-center justify-center">
+                <User className="w-6 h-6 text-primary" />
+              </div>
+            )}
+            <div className="flex-1">
+              <div>
+                <h3 className="font-semibold text-foreground">
+                  {customer.name}
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  {customer.phone}
+                </p>
+              </div>
+            </div>
+          </div>
+          <Badge
+            className={`flex items-center gap-1 px-2 py-1 text-xs ${statusStyles[customer.status]}`}
+            variant="outline"
+          >
+            {getStatusIcon(customer.status)}
+            <span className="capitalize">{customer.status.charAt(0)}</span>
+          </Badge>
+        </div>
+
+        {isUpcomingView && daysUntilEnd !== null && daysUntilEnd >= 0 && (
+          <div className="mb-3 p-2 bg-purple-50 rounded-lg border border-purple-200">
+            <p className="text-xs text-purple-700 font-medium">
+              ⏰ Loan ends in {daysUntilEnd} days (
+              {formatDate(getLoanEndDate(customer)?.toISOString() || "")})
+            </p>
+          </div>
+        )}
+
+        {isOverdueView && daysOverdue !== null && daysOverdue > 0 && (
+          <div className="mb-3 p-2 bg-orange-50 rounded-lg border border-orange-200">
+            <p className="text-xs text-orange-700 font-medium">
+              ⚠️ Overdue by {daysOverdue} days (Loan ended on{" "}
+              {formatDate(getLoanEndDate(customer)?.toISOString() || "")})
+            </p>
+          </div>
+        )}
+
+        <div className="grid grid-cols-2 gap-3 mb-3">
+          <div>
+            <p className="text-xs text-muted-foreground mb-1">Loan Amount</p>
+            <div className="flex items-center">
+              <IndianRupee className="w-4 h-4 mr-1" />
+              <span className="font-bold text-base">
+                {formatCurrency(customer.loanAmount)}
+              </span>
+            </div>
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground mb-1">Monthly EMI</p>
+            <div className="flex items-center">
+              <IndianRupee className="w-4 h-4 mr-1 text-green-600" />
+              <span className="font-bold text-base text-green-600">
+                {formatCurrency(calc.monthlyInstallment)}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+            <Clock className="w-3.5 h-3.5" />
+            <span>{getTermDuration(customer)}</span>
+          </div>
+          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+            <Calendar className="w-3.5 h-3.5" />
+            <span>{formatDate(customer.joinDate)}</span>
+          </div>
+        </div>
+
+        {/* ✅ Total Interest Earned Section - Full Width */}
+        <div className="mt-3 pt-3 border-t">
+          <div className="w-full bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950/30 dark:to-purple-950/30 rounded-lg p-3 border border-blue-200 dark:border-blue-800">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <TrendingUp className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                <p className="text-xs font-medium text-blue-600 dark:text-blue-400">
+                  Total Interest Earned
+                </p>
+              </div>
+              <p className="font-bold text-base text-blue-700 dark:text-blue-300">
+                {formatCurrency(calc.totalInterest)}
+              </p>
+            </div>
+            <div className="flex items-center justify-between mt-1">
+              <p className="text-xs text-muted-foreground">
+                Rate: {customer.interestRate}% p.a.
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {calc.monthlyInterest.toFixed(2)}/month
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* ✅ Removed Edit and Eye buttons - Only card click handles navigation */}
+      </CardContent>
+    </Card>
+  );
+};
 
   return (
     <DashboardLayout>
