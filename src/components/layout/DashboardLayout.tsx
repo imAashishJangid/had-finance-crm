@@ -15,6 +15,7 @@ import {
   X,
   Bell,
   Search,
+  Clock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,6 +32,7 @@ const navItems = [
   { icon: Wallet, label: "Payments", path: "/payments" },
    { icon: Calculator , label: "Calculator", path: "/calculator" }, 
   { icon: FileClock , label: "History", path: "/history" }, 
+   { icon: Clock , label: "Admin", path: "/personal-lending "}, 
 ];
 
 export default function DashboardLayout({ children }: DashboardLayoutProps) {

@@ -15,6 +15,8 @@ import History from "./pages/History";
 import Noti from "./pages/Noti";
 import CustomerDetails from "./pages/CustomerDetails";
 import InterestAnalytics from "@/pages/InterestAnalytics";
+import PersonalLending from "@/pages/PersonalLending";
+
 
 
 const queryClient = new QueryClient();
@@ -42,6 +44,9 @@ const App = () => (
           <Route path="/customers/:id" element={<CustomerDetails />} />
           <Route path="/customers/edit/:id" element={<CustomerForm />} />
           <Route path="/interest-analytics" element={<InterestAnalytics />} />
+          <Route path="/personal-lending" element={<PersonalLending />} />
+         {/* <Route path="/personal-lending/:id" element={<PersonalLendingDetail />} /> */}
+
 
 
           {/* NOT FOUND */}
