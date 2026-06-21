@@ -5,7 +5,8 @@ import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import toast from "react-hot-toast";
+
 import {
   Table,
   TableBody,
@@ -34,29 +35,17 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Search,
   Plus,
-  Filter,
-  Download,
   Eye,
-  Edit,
-  Trash2,
   Calendar,
   IndianRupee,
   Users,
-  Wallet,
   TrendingUp,
   TrendingDown,
-  ChevronDown,
-  ChevronUp,
   CheckCircle,
   Clock,
   AlertTriangle,
-  User,
-  Phone,
-  FileText,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
-import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
 import { API_URL } from "@/api/config";
 import axios from "axios";
 
@@ -78,7 +67,7 @@ interface Transaction {
   totalPayable: number;
   totalPaid: number;
   remainingAmount: number;
-  status: "pending" | "partially_paid" | "completed" | "overdue" | "defaulted";
+  status: "pending" | "partially_paid" | "completed" | "overdue" | "defaulted" | "active";
   payments: Array<{
     amount: number;
     date: string;
@@ -91,20 +80,32 @@ interface Transaction {
 }
 
 const statusStyles = {
+  active: "bg-green-100 text-green-700 border-green-200",
   pending: "bg-yellow-100 text-yellow-700 border-yellow-200",
   partially_paid: "bg-blue-100 text-blue-700 border-blue-200",
-  completed: "bg-green-100 text-green-700 border-green-200",
+  completed: "bg-green-600 text-white border-green-700",
   overdue: "bg-red-100 text-red-700 border-red-200",
   defaulted: "bg-red-200 text-red-800 border-red-300",
 };
 
 const statusIcons = {
+  active: CheckCircle,
   pending: Clock,
   partially_paid: Clock,
   completed: CheckCircle,
   overdue: AlertTriangle,
   defaulted: AlertTriangle,
 };
+
+// Status dropdown options
+const statusOptions = [
+  { value: "active", label: "Active" },
+  { value: "pending", label: "Pending" },
+  { value: "partially_paid", label: "Partially Paid" },
+  { value: "completed", label: "Completed" },
+  { value: "overdue", label: "Overdue" },
+  { value: "defaulted", label: "Defaulted" },
+];
 
 export default function PersonalLending() {
   const navigate = useNavigate();
@@ -130,7 +131,7 @@ export default function PersonalLending() {
     interestType: "simple",
     duration: "",
     durationType: "months",
-    dueDate: "",
+    startDate: "",
     purpose: "",
     notes: "",
   });
@@ -139,78 +140,78 @@ export default function PersonalLending() {
     fetchTransactions();
   }, []);
 
-  // ✅ API calls with /api prefix
-const fetchTransactions = async () => {
-  try {
-    setLoading(true);
-    const response = await axios.get(`${API_URL}/api/personal-transactions`);
-    // Calls: https://had-loan-manage.onrender.com/api/personal-transactions
-    if (response.data.success) {
-      setTransactions(response.data.data);
-      setSummary(response.data.summary);
+  const fetchTransactions = async () => {
+    try {
+      setLoading(true);
+      const response = await axios.get(`${API_URL}/api/personal-transactions`);
+      if (response.data.success) {
+        setTransactions(response.data.data);
+        setSummary(response.data.summary);
+      }
+    } catch (error) {
+      console.error("Error fetching transactions:", error);
+      toast.error("Failed to fetch transactions");
+    } finally {
+      setLoading(false);
     }
-  } catch (error) {
-    console.error("Error fetching transactions:", error);
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
-  // ✅ POST with /api prefix
-const handleAddTransaction = async () => {
-  try {
-    // Validate required fields
-    if (!newTransaction.personName || !newTransaction.amount || !newTransaction.duration || !newTransaction.dueDate) {
-      alert("Please fill all required fields");
-      return;
+  const handleAddTransaction = async () => {
+    try {
+      if (!newTransaction.personName || !newTransaction.amount || !newTransaction.duration || !newTransaction.startDate) {
+        toast.error("Please fill all required fields");
+        return;
+      }
+
+      // Calculate due date based on start date + duration
+      const startDate = new Date(newTransaction.startDate);
+      const durationMonths = parseInt(newTransaction.duration);
+      const dueDate = new Date(startDate);
+      dueDate.setMonth(startDate.getMonth() + durationMonths);
+
+      const payload = {
+        type: newTransaction.type,
+        personName: newTransaction.personName,
+        personPhone: newTransaction.personPhone || "",
+        amount: parseFloat(newTransaction.amount),
+        interestRate: parseFloat(newTransaction.interestRate) || 0,
+        interestType: newTransaction.interestType,
+        duration: parseInt(newTransaction.duration),
+        durationType: newTransaction.durationType,
+        transactionDate: newTransaction.startDate,
+        dueDate: dueDate.toISOString().split("T")[0],
+        purpose: newTransaction.purpose || "",
+        notes: newTransaction.notes || "",
+        status: "active",
+      };
+
+      console.log("📤 Sending payload:", payload);
+
+      const response = await axios.post(`${API_URL}/api/personal-transactions`, payload);
+      
+      if (response.data.success) {
+        setIsAddDialogOpen(false);
+        fetchTransactions();
+        setNewTransaction({
+          type: "lend",
+          personName: "",
+          personPhone: "",
+          amount: "",
+          interestRate: "0",
+          interestType: "simple",
+          duration: "",
+          durationType: "months",
+          startDate: "",
+          purpose: "",
+          notes: "",
+        });
+        toast.success("✅ Transaction added successfully!");
+      }
+    } catch (error: any) {
+      console.error("❌ Error adding transaction:", error);
+      toast.error(`❌ ${error.response?.data?.message || "Something went wrong"}`);
     }
-
-    const payload = {
-      type: newTransaction.type,
-      personName: newTransaction.personName,
-      personPhone: newTransaction.personPhone || "",
-      amount: parseFloat(newTransaction.amount),
-      interestRate: parseFloat(newTransaction.interestRate) || 0,
-      interestType: newTransaction.interestType,
-      duration: parseInt(newTransaction.duration),
-      durationType: newTransaction.durationType,
-      dueDate: newTransaction.dueDate,
-      purpose: newTransaction.purpose || "",
-      notes: newTransaction.notes || "",
-    };
-
-    console.log("📤 Sending payload:", payload);
-
-    const response = await axios.post(`${API_URL}/api/personal-transactions`, payload);
-    
-    if (response.data.success) {
-      setIsAddDialogOpen(false);
-      fetchTransactions();
-      setNewTransaction({
-        type: "lend",
-        personName: "",
-        personPhone: "",
-        amount: "",
-        interestRate: "0",
-        interestType: "simple",
-        duration: "",
-        durationType: "months",
-        dueDate: "",
-        purpose: "",
-        notes: "",
-      });
-      alert("✅ Transaction added successfully!");
-    }
-  } catch (error: any) {
-    console.error("❌ Error adding transaction:", error);
-    if (error.response) {
-      console.error("Response data:", error.response.data);
-      alert(`❌ Error: ${error.response.data.message || "Something went wrong"}`);
-    } else {
-      alert("❌ Network error. Please check your connection.");
-    }
-  }
-};
+  };
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("en-IN", {
@@ -325,9 +326,9 @@ const handleAddTransaction = async () => {
                       />
                     </div>
                   </div>
-                  <div className="grid grid-cols-3 gap-4">
+                  <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label>Duration *</Label>
+                      <Label>Duration (Months) *</Label>
                       <Input
                         type="number"
                         placeholder="12"
@@ -335,30 +336,14 @@ const handleAddTransaction = async () => {
                         onChange={(e) => setNewTransaction({ ...newTransaction, duration: e.target.value })}
                       />
                     </div>
-                    <div className="space-y-2 col-span-2">
-                      <Label>Duration Type</Label>
-                      <Select
-                        value={newTransaction.durationType}
-                        onValueChange={(value) => setNewTransaction({ ...newTransaction, durationType: value })}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="days">Days</SelectItem>
-                          <SelectItem value="months">Months</SelectItem>
-                          <SelectItem value="years">Years</SelectItem>
-                        </SelectContent>
-                      </Select>
+                    <div className="space-y-2">
+                      <Label>Loan Start Date *</Label>
+                      <Input
+                        type="date"
+                        value={newTransaction.startDate}
+                        onChange={(e) => setNewTransaction({ ...newTransaction, startDate: e.target.value })}
+                      />
                     </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Due Date *</Label>
-                    <Input
-                      type="date"
-                      value={newTransaction.dueDate}
-                      onChange={(e) => setNewTransaction({ ...newTransaction, dueDate: e.target.value })}
-                    />
                   </div>
                   <div className="space-y-2">
                     <Label>Purpose / Notes</Label>
@@ -441,7 +426,7 @@ const handleAddTransaction = async () => {
                   <TableRow className="bg-muted/30">
                     <TableHead className="font-semibold text-xs">Person</TableHead>
                     <TableHead className="font-semibold text-xs hidden sm:table-cell">Type</TableHead>
-                    <TableHead className="font-semibold text-xs hidden md:table-cell">Date</TableHead>
+                    <TableHead className="font-semibold text-xs hidden md:table-cell">Start Date</TableHead>
                     <TableHead className="font-semibold text-xs">Amount</TableHead>
                     <TableHead className="font-semibold text-xs hidden lg:table-cell">Interest</TableHead>
                     <TableHead className="font-semibold text-xs hidden sm:table-cell">Total Payable</TableHead>
@@ -451,9 +436,13 @@ const handleAddTransaction = async () => {
                 </TableHeader>
                 <TableBody>
                   {filteredTransactions.map((transaction) => {
-                    const StatusIcon = statusIcons[transaction.status];
+                    const StatusIcon = statusIcons[transaction.status as keyof typeof statusIcons] || statusIcons.pending;
                     return (
-                      <TableRow key={transaction._id} className="hover:bg-muted/20 cursor-pointer" onClick={() => navigate(`/personal-lending/${transaction._id}`)}>
+                      <TableRow 
+                        key={transaction._id} 
+                        className="hover:bg-muted/20 cursor-pointer transition-colors" 
+                        onClick={() => navigate(`/personal-lending/${transaction._id}`)}
+                      >
                         <TableCell>
                           <div>
                             <p className="font-medium text-sm">{transaction.personName}</p>
@@ -461,7 +450,7 @@ const handleAddTransaction = async () => {
                           </div>
                         </TableCell>
                         <TableCell className="hidden sm:table-cell">
-                          <Badge className={transaction.type === "lend" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}>
+                          <Badge className={transaction.type === "lend" ? "bg-green-100 text-green-700 border-green-200" : "bg-red-100 text-red-700 border-red-200"}>
                             {transaction.type === "lend" ? "Lent" : "Borrowed"}
                           </Badge>
                         </TableCell>
@@ -470,13 +459,21 @@ const handleAddTransaction = async () => {
                         <TableCell className="text-sm hidden lg:table-cell text-green-600">{formatCurrency(transaction.totalInterest)}</TableCell>
                         <TableCell className="font-bold text-sm hidden sm:table-cell text-purple-600">{formatCurrency(transaction.totalPayable)}</TableCell>
                         <TableCell className="hidden sm:table-cell">
-                          <Badge className={statusStyles[transaction.status]}>
+                          <Badge className={statusStyles[transaction.status as keyof typeof statusStyles] || statusStyles.pending}>
                             <StatusIcon className="w-3 h-3 mr-1" />
-                            {transaction.status.replace("_", " ")}
+                            {transaction.status === "active" ? "Active" : transaction.status.replace("_", " ")}
                           </Badge>
                         </TableCell>
                         <TableCell className="text-right hidden sm:table-cell">
-                          <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="h-7 w-7 p-0 hover:bg-primary/10"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate(`/personal-lending/${transaction._id}`);
+                            }}
+                          >
                             <Eye className="w-4 h-4" />
                           </Button>
                         </TableCell>
